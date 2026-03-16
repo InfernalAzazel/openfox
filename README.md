@@ -1,8 +1,31 @@
-# OpenFox — 你的个人 AI 助手
 
-**OpenFox** 是你在自己设备上运行的**个人 AI 助手**。通过飞书等通道与它对话，它可以使用定时任务、股票行情、Shell、MCP 工具和本地技能来帮你完成任务。网关即控制面，产品即助手。
 
+<div align="center"><h1>🦊 OpenFox — 个人人工智能助手</h1></div>
+
+<div align="center">
+
+excellent back office management system solution
+
+[![python](https://img.shields.io/badge/python-3.10.x-blue.svg?style=flat-square)](https://docs.python.org/3.12/index.html)
+[![agno](https://img.shields.io/badge/agno-orange.svg?style=flat-square)](https://github.com/agno-agi/agno.git)
+[![mongodb](https://img.shields.io/badge/mongodb-8-brightgreen.svg?style=flat-square)](https://github.com/mongodb/mongo.git)
+
+</div>
+
+
+**OpenFox** 是一款运行在您自己的设备上的**个人 AI 助手**。通过飞书等通道与它对话，它可以使用定时任务、股票行情、Shell、MCP 工具和本地技能来帮你完成任务。网关即控制面，产品即助手。
 如果你想要一个**自托管、单用户、本地优先**的 AI 助手，就是它。
+
+---
+
+## 功能亮点
+
+- **本地优先网关** — 单控制面：会话、通道、工具与定时任务统一管理。
+- **飞书通道** — 在飞书中与助手对话，支持单聊与群聊（可扩展更多通道）。
+- **定时任务（Cron）** — 用自然语言创建周期任务（如「每天早上 9 点发日报」），到点自动回调 Agent。
+- **丰富工具** — Shell 执行、AkShare 股票行情、MCP 工具集、配置读写；技能文档中的 CLI 示例可由 Agent 调用执行。
+- **技能与 MCP** — 本地 Skills（`openfox/skills`）+ 可配置 MCP server（stdio/HTTP），按需扩展能力。
+- **配置即服务** — 配置文件 `~/.openfox/config.json`，支持通过 Agent 的 config 工具在对话中查看与修改。
 
 ---
 
@@ -40,17 +63,6 @@ python -m openfox serve
 - **终端交互**（规划中）：`python -m openfox agent` 将提供 REPL 与助手对话。
 
 升级或排查问题时，可检查 `~/.openfox/config.json` 与 MongoDB 连接、LLM API 配置是否正确。
-
----
-
-## 功能亮点
-
-- **本地优先网关** — 单控制面：会话、通道、工具与定时任务统一管理。
-- **飞书通道** — 在飞书中与助手对话，支持单聊与群聊（可扩展更多通道）。
-- **定时任务（Cron）** — 用自然语言创建周期任务（如「每天早上 9 点发日报」），到点自动回调 Agent。
-- **丰富工具** — Shell 执行、AkShare 股票行情、MCP 工具集、配置读写；技能文档中的 CLI 示例可由 Agent 调用执行。
-- **技能与 MCP** — 本地 Skills（`openfox/skills`）+ 可配置 MCP server（stdio/HTTP），按需扩展能力。
-- **配置即服务** — 配置文件 `~/.openfox/config.json`，支持通过 Agent 的 config 工具在对话中查看与修改。
 
 ---
 ## 效果
