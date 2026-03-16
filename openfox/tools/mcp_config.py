@@ -1,7 +1,7 @@
 from typing import Any
 from agno.tools import Toolkit
 from json_repair import loads as json_repair_loads
-from openfox.modes.config import Config, MCPServerConfig
+from openfox.modes.config import MCPServerConfig
 from openfox.tools.config import ConfigTools
 
 
@@ -22,15 +22,9 @@ class MCPConfigTools(Toolkit):
             ],
         )
 
-    def _load(self) -> Config:
-        return self._config_tools.load_config()
-
-    def _save(self, config: Config) -> str:
-        return self._config_tools.save_config(config)
-
     def list_mcps(self) -> list[dict[str, Any]]:
         """查看当前 MCP 配置。"""
-        cfg = self._load()
+        cfg = self._config_tools.load()
         return [item.model_dump(by_alias=False) for item in cfg.mcps]
 
     def add_mcp_stdio(
@@ -50,7 +44,7 @@ class MCPConfigTools(Toolkit):
             env: JSON 字符串对象，如 `{\"HTTP_PROXY\":\"http://127.0.0.1:7890\"}`。
             tool_timeout: 工具超时秒数。
         """
-        cfg = self._load()
+        cfg = self._config_tools.load()
 
         parsed_args = json_repair_loads(args) if args else []
         parsed_env = json_repair_loads(env) if env else {}
@@ -69,7 +63,7 @@ class MCPConfigTools(Toolkit):
                 tool_timeout=tool_timeout,
             )
         )
-        self._save(cfg)
+        self._config_tools.save(cfg)
         return f"已添加 stdio MCP：{name}。请重启服务使其生效。"
 
     def add_mcp_http(
@@ -87,7 +81,7 @@ class MCPConfigTools(Toolkit):
             headers: JSON 字符串对象，如 `{\"Authorization\":\"Bearer xxx\"}`。
             tool_timeout: 工具超时秒数。
         """
-        cfg = self._load()
+        cfg = self._config_tools.load()
 
         parsed_headers = json_repair_loads(headers) if headers else {}
         if not isinstance(parsed_headers, dict):
@@ -102,18 +96,18 @@ class MCPConfigTools(Toolkit):
                 tool_timeout=tool_timeout,
             )
         )
-        self._save(cfg)
+        self._config_tools.save(cfg)
         return f"已添加 HTTP MCP：{name}。请重启服务使其生效。"
 
     def remove_mcp(self, name: str) -> str:
         """按名称删除 MCP 配置。"""
-        cfg = self._load()
+        cfg = self._config_tools.load()
         before = len(cfg.mcps)
         cfg.mcps = [m for m in cfg.mcps if m.name != name]
         after = len(cfg.mcps)
         if before == after:
             return f"未找到 MCP：{name}"
-        self._save(cfg)
+        self._config_tools.save(cfg)
         return f"已删除 MCP：{name}。请重启服务使其生效。"
 
     def edit_mcp(
@@ -139,7 +133,7 @@ class MCPConfigTools(Toolkit):
             headers: 新 HTTP 头 JSON 对象字符串。
             tool_timeout: 新超时秒数，<=0 表示不修改。
         """
-        cfg = self._load()
+        cfg = self._config_tools.load()
         idx = next((i for i, m in enumerate(cfg.mcps) if m.name == name), -1)
         if idx < 0:
             return f"未找到 MCP：{name}"
@@ -187,13 +181,13 @@ class MCPConfigTools(Toolkit):
                 raise ValueError("command/url 不能同时有效，请只保留一种 MCP 传输方式")
 
         cfg.mcps[idx] = MCPServerConfig.model_validate(current)
-        self._save(cfg)
+        self._config_tools.save(cfg)
         return f"已更新 MCP：{name}。请重启服务使其生效。"
 
     def clear_mcps(self) -> str:
         """清空全部 MCP 配置。"""
-        cfg = self._load()
+        cfg = self._config_tools.load()
         cfg.mcps = []
-        self._save(cfg)
+        self._config_tools.save(cfg)
         return "已清空全部 MCP 配置。请重启服务使其生效。"
 

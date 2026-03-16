@@ -33,8 +33,11 @@ class Config(BaseSettings):
     """配置。"""
     agent_id: str = Field(default="OpenFox", description="Agent ID")
     skills_path: str = Field(default="openfox/skills", description="技能路径")
+    docs_enabled: bool = Field(default=True, description="是否启用文档")
+    authorization_enabled: bool = Field(default=True, description="是否启用授权")
+    os_security_key: str = Field(default="", description="AgentOS 安全密钥")
+    cors_origin_list: List[str] = Field(default_factory=list, description="CORS 允许的源列表")
     time_zone: str = Field(default="Asia/Shanghai", description="时区")
-    token: str = Field(default="", description="OpenFox HTTP 服务访问令牌")
     db_url: str = Field(default="mongodb://test:test@127.0.0.1:27017", description="MongoDB 连接 URL")
     db_name: str = Field(default="openfox", description="MongoDB 数据库名称")
     llm: LLMConfig = Field(default_factory=LLMConfig, description="LLM 配置")

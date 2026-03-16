@@ -3,10 +3,8 @@ import secrets
 import typer
 import uvicorn
 from pymongo import MongoClient
-from openfox.utils.agent import OpenMeshAgent
 from openfox.tools.config import ConfigTools
 from openfox.modes.config import Config
-
 
 app = typer.Typer(
     name="openfox",
@@ -46,10 +44,31 @@ def init():
         )
         return
     
-    # 生成token
-    token = secrets.token_hex(16)
-    config.token = token
-    typer.secho(f"生成 token: {token}", fg=typer.colors.MAGENTA)
+    # 是否启用文档
+    docs_enabled = typer.prompt(typer.style("是否启用文档 (docs_enabled)", fg=typer.colors.CYAN), default=config.docs_enabled)
+    config.docs_enabled = docs_enabled
+    typer.secho(f"是否启用文档: {docs_enabled}", fg=typer.colors.MAGENTA)
+
+    # 是否启用授权
+    authorization_enabled = typer.prompt(typer.style("是否启用授权 (authorization_enabled)", fg=typer.colors.CYAN), default=config.authorization_enabled)
+    config.authorization_enabled = authorization_enabled
+    typer.secho(f"是否启用授权: {authorization_enabled}", fg=typer.colors.MAGENTA)
+
+    # 生成 os_security_key
+    os_security_key = secrets.token_hex(16)
+    config.os_security_key = os_security_key
+    typer.secho(f"生成 os_security_key: {os_security_key}", fg=typer.colors.MAGENTA)
+
+    # CORS 允许的源列表（逗号分隔，内部仍然存 List[str]）
+    cors_origin_input = typer.prompt(
+        typer.style("CORS 允许的源列表 (cors_origin_list, 用逗号分隔, 默认 * 表示所有源)", fg=typer.colors.CYAN),
+        default=["*"],
+    )
+    config.cors_origin_list = [origin.strip() for origin in cors_origin_input.split(",") if origin.strip()]
+  
+    # 时区
+    time_zone = typer.prompt(typer.style("时区 (time_zone)", fg=typer.colors.CYAN), default=config.time_zone)
+    config.time_zone = time_zone
 
     # LLM 配置
     typer.secho("\n配置 LLM：", fg=typer.colors.GREEN, bold=True)
@@ -76,10 +95,7 @@ def serve(host: str = "0.0.0.0", port: int = 7777) -> None:
     启动 OpenFox HTTP 服务。
     """
     init()
+    # 必须在 init() 之后导入 OpenMeshAgent，否则会读取不到配置
+    from openfox.utils.agent import OpenMeshAgent
     openfox_agent = OpenMeshAgent()
     uvicorn.run(openfox_agent.app, host=host, port=port)
-
-
-
-
-

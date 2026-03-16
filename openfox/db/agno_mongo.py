@@ -155,8 +155,6 @@ class AsyncMongoDb(AsyncBaseDb):
         traces_collection: Optional[str] = None,
         spans_collection: Optional[str] = None,
         learnings_collection: Optional[str] = None,
-        schedules_collection: Optional[str] = None,
-        schedule_runs_collection: Optional[str] = None,
         id: Optional[str] = None,
     ):
         """
@@ -204,8 +202,6 @@ class AsyncMongoDb(AsyncBaseDb):
             traces_table=traces_collection,
             spans_table=spans_collection,
             learnings_table=learnings_collection,
-            schedules_table=schedules_collection,
-            schedule_runs_table=schedule_runs_collection,
         )
 
         # Detect client type if provided

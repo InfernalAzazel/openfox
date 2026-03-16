@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from agno.agent import Agent
 from agno.models.litellm import LiteLLM
 from agno.os import AgentOS
-from agno.os.config import AuthorizationConfig
+from agno.os.settings import AgnoAPISettings
 from agno.skills import Skills, LocalSkills
 from agno.scheduler import ScheduleManager
 from openfox.interfaces.feishu import Feishu
@@ -36,6 +36,7 @@ def make_lifespan(db, tools: List[Toolkit] = []):
         await sn.start()
         yield
         await sn.stop()
+        await db.close()
 
     return _lifespan
 
@@ -119,7 +120,6 @@ class OpenMeshAgent:
             db=self.db,
             markdown=True,
         )
-
         self.app = AgentOS(
             name=self.config.agent_id,
             agents=[self.agent],
@@ -128,12 +128,10 @@ class OpenMeshAgent:
             scheduler=True,
             scheduler_poll_interval=15,
             lifespan=make_lifespan(self.db, [self.feishu_tools]),
-            authorization=True,
-            authorization_config=AuthorizationConfig(
-                verification_keys=[self.config.token],
-                algorithm="HS256",
-                verify_audience=True,
+            settings=AgnoAPISettings(
+                os_security_key=self.config.os_security_key,
+                docs_enabled=self.config.docs_enabled,
+                authorization_enabled=self.config.authorization_enabled,
+                cors_origin_list=self.config.cors_origin_list if self.config.cors_origin_list else None,
             ),
         ).get_app()
-
-

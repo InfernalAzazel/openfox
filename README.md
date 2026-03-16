@@ -41,7 +41,11 @@ MongoDB 连接字符串 (db_url) [mongodb://test:test@127.0.0.1:27017]:
 MongoDB 数据库名称 (db_name) [openfox]: 
 检测 MongoDB 连接中...
 ✅ MongoDB 连接成功。
-生成 token: 7a151a32b18b95735c327e82bf23ad49
+是否启用文档 (docs_enabled) [True]: 
+是否启用授权 (authorization_enabled) [True]:
+生成 token: 7a151a32b18b95735c327e82bf23ad49 
+CORS 允许的源列表 (cors_origin_list, 用逗号分隔, 默认 * 表示所有源) [['*']]:
+时区 (time_zone) [Asia/Shanghai]: 
 
 配置 LLM：
 LLM 模型名称 (llm.model_name) [deepseek/deepseek-chat]: 
@@ -101,27 +105,7 @@ LLM API Key (llm.api_key): 你的 Key
 
 ## 配置说明
 
-最小配置示例（`~/.openfox/config.json`）：
 
-```json
-{
-  "db_url": "mongodb://localhost:27017",
-  "llm": {
-    "model_name": "dashscope/qwen-max",
-    "api_key": "your-api-key",
-    "api_base": "https://dashscope.aliyuncs.com/compatible-mode/v1"
-  },
-  "channels": {
-    "feishu": {
-      "app_id": "",
-      "app_secret": "",
-      "encrypt_key": "",
-      "verification_token": ""
-    }
-  },
-  "mcps": []
-}
-```
 
 - **db_url**：MongoDB 连接字符串（会话与调度存储）。
 - **llm**：模型名称、API Key、API Base（兼容 OpenAI 的接口即可，如 DashScope、LiteLLM）。
