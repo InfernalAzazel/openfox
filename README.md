@@ -59,15 +59,6 @@ LLM API Key (llm.api_key): 你的 Key
 飞书 Verification Token (channels.feishu.verification_token): 你的 Verification Token
 配置文件已保存到：/Users/kylin/.openfox/config.json
 ```
-关键目录：
-
-- `openfox/utils/agent.py` — Agent、工具、调度、飞书接口与 FastAPI 应用组装。
-- `openfox/cli/commands.py` — CLI 入口（`serve` / `agent`）。
-- `openfox/modes/config.py` — 配置模型。
-- `openfox/tools/` — 各类工具实现。
-- `openfox/skills/` — 技能与 SKILL.md。
-
----
 
 服务启动后：
 
@@ -103,16 +94,6 @@ LLM API Key (llm.api_key): 你的 Key
 
 ---
 
-## 配置说明
-
-
-
-- **db_url**：MongoDB 连接字符串（会话与调度存储）。
-- **llm**：模型名称、API Key、API Base（兼容 OpenAI 的接口即可，如 DashScope、LiteLLM）。
-- **channels.feishu**：飞书开放平台应用凭证与事件订阅密钥。
-- **mcps**：MCP server 列表，每项可为 `command`+`args`（stdio）或 `url`（HTTP）。
-
----
 ## 内网穿透工具
 
 - [zeronews](https://user.zeronews.cc/setup/start)
@@ -132,7 +113,6 @@ LLM API Key (llm.api_key): 你的 Key
 
 - **技能目录**：`openfox/skills/`，每个子目录可包含 `SKILL.md`，由 Agno 的 `LocalSkills` 自动加载。
 - **MCP 工具**：在配置的 `mcps` 中声明 MCP server（stdio 或 HTTP），Agent 即可在对话中按需调用。
-- 可在对话中通过 **config / mcp_config** 类工具查看或修改配置（修改 MCP 后需重启服务生效）。
 
 ---
 
