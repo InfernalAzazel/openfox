@@ -14,10 +14,10 @@ class FeishuConfig(BaseSettings):
 
 class LLMConfig(BaseSettings):
     """LLM 配置。"""
-    model_name: str = Field(default="dashscope/qwen-max", description="模型名称")
+    model_name: str = Field(default="deepseek/deepseek-chat", description="模型名称")
     api_key: str = Field(default="", description="API 密钥")
     api_base: str = Field(
-        default="https://dashscope.aliyuncs.com/compatible-mode/v1",
+        default="https://api.deepseek.com",
         description="API 基础 URL",
     )
 

@@ -27,23 +27,6 @@
 
 ---
 
-## 推荐安装方式
-
-**运行环境：Python ≥3.12**。推荐使用 [uv](https://github.com/astral-sh/uv) 或 pip + venv。
-
-```bash
-# 克隆并进入项目
-git clone https://github.com/InfernalAzazel/openfox.git
-cd openfox
-
-# 使用 uv 安装（推荐）
-uv sync
-
-# 或使用 pip
-pip install -e .
-```
-
----
 
 ## 快速开始（TL;DR）
 
@@ -71,6 +54,26 @@ python -m openfox serve
 升级或排查问题时，可检查 `~/.openfox/config.json` 与 MongoDB 连接、LLM API 配置是否正确。
 
 ---
+
+## 支持模型
+
+- [LiteLLM 支持的所有 OpenAI-compatible 提供商与模型](https://docs.litellm.ai/docs/providers)，只要走 OpenAI Chat Completions 接口基本都能用。
+
+```text
+示例模型（仅示例，完整列表见上方链接）：
+- openai/gpt-4.1-mini
+- openai/gpt-4.1
+- openai/gpt-4.1-preview
+- openai/gpt-4o-mini
+- openai/gpt-4o
+- dashscope/qwen-max
+- deepseek/deepseek-chat
+- moonshot/moonshot-v1-32k
+- ollama/llama3.1
+- openrouter/meta-llama/Meta-Llama-3.1-70B-Instruct
+```
+---
+
 ## 效果
 
 ![feishu](./assets/feishu.gif)

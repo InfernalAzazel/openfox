@@ -122,6 +122,7 @@ class OpenMeshAgent:
             tools=tools_list,
             skills=Skills(loaders=[LocalSkills("openfox/skills")]),
             db=self.db,
+            markdown=True,
         )
 
         self.app = AgentOS(
