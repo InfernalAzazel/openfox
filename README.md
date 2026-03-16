@@ -55,7 +55,7 @@ python -m openfox serve
 ---
 ## 效果
 
-<video src="assets/feishu.mp4" controls width="700"></video>
+![feishu](./assets/feishu.gif)
 
 ## 架构示意
 
