@@ -8,7 +8,7 @@ from fastapi.responses import Response
 from openfox.tools.config import ConfigTools
 
 config_tools = ConfigTools()
-config = config_tools.load_config()
+config = config_tools.load()
 
 # ---------- 飞书事件订阅（lark_oapi）----------
 # https://open.feishu.cn/document/server-side-sdk/python--sdk/handle-callbacks#335ab2f1

@@ -9,7 +9,7 @@ from agno.agent.agent import Agent
 from agno.agent.remote import RemoteAgent
 from agno.team.remote import RemoteTeam
 from agno.team.team import Team
-from agno.utils.log import log_error, log_info, log_warning
+from agno.utils.log import logger
 from agno.workflow import RemoteWorkflow, Workflow
 
 from openfox.interfaces.security import (
@@ -100,7 +100,7 @@ def attach_routes(
         if not message_text:
             return
 
-        log_info(
+        logger.info(
             f"[飞书消息] event_id={event_id} message_type={message_type} message_id={message_id}\n"
             + f"open_id={open_id} chat_id={chat_id}: {message_text[:80]}..."
         )
@@ -109,13 +109,13 @@ def attach_routes(
         try:
             response = await runner.arun(message_text, user_id=open_id, session_id=f"feishu:{open_id}")
         except Exception as e:
-            log_error(f"处理飞书消息异常: {e}")
+            logger.error(f"处理飞书消息异常: {e}")
             await feishu_tools.send_text_message("处理您的消息时出错，请稍后再试。", receive_id=chat_id, receive_id_type="chat_id")
             return
 
         if response.status == "ERROR":
             await feishu_tools.send_text_message("处理时发生错误，请稍后再试。", receive_id=chat_id, receive_id_type="chat_id")
-            log_error(response.content)
+            logger.error(response.content)
             return
 
         if response.reasoning_content:

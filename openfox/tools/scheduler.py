@@ -53,6 +53,7 @@ class CronTools(Toolkit):
         获取定时任务列表。
         """
         schedules = await self.schedule_mgr.alist(enabled=True)
+        logger.info(f"list_schedule: schedules={schedules}")
         return f"定时任务列表: {schedules}"
 
     async def delete(self, schedule_id: str) -> str:
@@ -61,6 +62,7 @@ class CronTools(Toolkit):
         - 需要先调用 list 方法获取 schedule_id
         """
         await self.schedule_mgr.adelete(schedule_id)
+        logger.info(f"delete_schedule: schedule_id={schedule_id}")
         return f"定时任务删除成功"
 
     async def disable(self, schedule_id: str) -> str:
@@ -69,4 +71,5 @@ class CronTools(Toolkit):
         - 需要先调用 list 方法获取 schedule_id
         """
         await self.schedule_mgr.adisable(schedule_id)
+        logger.info(f"disable_schedule: schedule_id={schedule_id}")
         return f"定时任务禁用成功"

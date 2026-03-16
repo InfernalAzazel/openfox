@@ -13,7 +13,7 @@ class FeishuTools(Toolkit):
     def __init__(self,):
         """初始化飞书工具"""
         self.config_tools = ConfigTools()
-        self.config = self.config_tools.load_config()
+        self.config = self.config_tools.load()
         self.app_id = self.config.channels.feishu.app_id
         self.app_secret = self.config.channels.feishu.app_secret
         self.encrypt_key = self.config.channels.feishu.encrypt_key

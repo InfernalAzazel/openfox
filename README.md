@@ -34,7 +34,26 @@
 
 ```bash
 # 启动 HTTP 服务（默认端口 7777）
-python -m openfox serve
+python -m openfox
+
+🦊 初始化 OpenFox 配置
+MongoDB 连接字符串 (db_url) [mongodb://test:test@127.0.0.1:27017]: 
+MongoDB 数据库名称 (db_name) [openfox]: 
+检测 MongoDB 连接中...
+✅ MongoDB 连接成功。
+生成 token: 7a151a32b18b95735c327e82bf23ad49
+
+配置 LLM：
+LLM 模型名称 (llm.model_name) [deepseek/deepseek-chat]: 
+LLM API Base URL (llm.api_base) [https://api.deepseek.com]: 
+LLM API Key (llm.api_key): 你的 Key
+
+配置飞书通道：
+飞书 App ID (channels.feishu.app_id): 你的 App ID 
+飞书 App Secret (channels.feishu.app_secret): 你的 App Secret
+飞书 Encrypt Key (channels.feishu.encrypt_key): 你的 Encrypt Key
+飞书 Verification Token (channels.feishu.verification_token): 你的 Verification Token
+配置文件已保存到：/Users/kylin/.openfox/config.json
 ```
 关键目录：
 

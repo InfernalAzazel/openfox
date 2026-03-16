@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from agno.agent import Agent
 from agno.models.litellm import LiteLLM
 from agno.os import AgentOS
+from agno.os.config import AuthorizationConfig
 from agno.skills import Skills, LocalSkills
 from agno.scheduler import ScheduleManager
 from openfox.interfaces.feishu import Feishu
@@ -77,18 +78,12 @@ def build_mcps(config: Config) -> Optional[MultiMCPTools]:
 class OpenMeshAgent:
     """封装 OpenMesh Agent 的配置、存储与运行时。"""
 
-    AGENT_ID = "openfox"
-    DEFAULT_TZ = "Asia/Shanghai"
-    SKILLS_PATH = "openfox/skills"
-
-
-
     def __init__(self):
         self.feishu_tools = FeishuTools()
         self.config_tools = ConfigTools()
         self.mcp_config_tools = MCPConfigTools(self.config_tools)
-        self.config = self.config_tools.load_config()
-        self.db = AsyncMongoDb(db_url=self.config.db_url)
+        self.config = self.config_tools.load()
+        self.db = AsyncMongoDb(db_url=self.config.db_url, db_name=self.config.db_name)
         self.schedule_mgr = ScheduleManager(self.db)
 
         self.instructions = [
@@ -98,14 +93,14 @@ class OpenMeshAgent:
             "当用户询问有哪些定时任务时使用 CronTools.list",
             "如果技能文档给出 CLI 示例，必须使用 run_shell 执行。",
             "当用户希望通过聊天配置 MCP 时，使用 mcp_config 工具。",
-            f"默认 timezone 使用 {self.DEFAULT_TZ}。",
+            f"默认 timezone 使用 {self.config.time_zone}。",
         ]
 
         mcps = build_mcps(self.config)
 
         tools_list: List[Toolkit] = [
             run_shell,
-            CronTools(endpoint=f"/agents/{self.AGENT_ID}/runs", schedule_mgr=self.schedule_mgr),
+            CronTools(endpoint=f"/agents/{self.config.agent_id}/runs", schedule_mgr=self.schedule_mgr),
             AkshareStockTools(),
             self.mcp_config_tools,
         ]
@@ -113,26 +108,32 @@ class OpenMeshAgent:
             tools_list.append(mcps)
 
         self.agent = Agent(
-            id=self.AGENT_ID,
+            id=self.config.agent_id,
             model=LiteLLM(
                 id=self.config.llm.model_name,
                 api_key=self.config.llm.api_key,
                 api_base=self.config.llm.api_base,
             ),
             tools=tools_list,
-            skills=Skills(loaders=[LocalSkills("openfox/skills")]),
+            skills=Skills(loaders=[LocalSkills(self.config.skills_path)]),
             db=self.db,
             markdown=True,
         )
 
         self.app = AgentOS(
-            name="OpenMesh",
+            name=self.config.agent_id,
             agents=[self.agent],
             interfaces=[Feishu(agent=self.agent)],
             db=self.db,
             scheduler=True,
             scheduler_poll_interval=15,
             lifespan=make_lifespan(self.db, [self.feishu_tools]),
+            authorization=True,
+            authorization_config=AuthorizationConfig(
+                verification_keys=[self.config.token],
+                algorithm="HS256",
+                verify_audience=True,
+            ),
         ).get_app()
 
 
