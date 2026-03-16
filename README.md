@@ -53,12 +53,20 @@ pip install -e .
 # 启动 HTTP 服务（默认端口 7777）
 python -m openfox serve
 ```
+关键目录：
+
+- `openfox/utils/agent.py` — Agent、工具、调度、飞书接口与 FastAPI 应用组装。
+- `openfox/cli/commands.py` — CLI 入口（`serve` / `agent`）。
+- `openfox/modes/config.py` — 配置模型。
+- `openfox/tools/` — 各类工具实现。
+- `openfox/skills/` — 技能与 SKILL.md。
+
+---
 
 服务启动后：
 
 - **飞书**：在飞书开放平台配置事件订阅与消息回调，指向该服务的飞书接口地址即可与助手对话。
 - **定时任务**：在对话中说「每 5 分钟提醒我喝水」等，Agent 会通过 Cron 工具创建周期任务。
-- **终端交互**（规划中）：`python -m openfox agent` 将提供 REPL 与助手对话。
 
 升级或排查问题时，可检查 `~/.openfox/config.json` 与 MongoDB 连接、LLM API 配置是否正确。
 
@@ -130,26 +138,6 @@ python -m openfox serve
 
 ---
 
-## 开发与从源码运行
-
-```bash
-git clone https://github.com/你的账号/openfox.git
-cd openfox
-uv sync
-
-# 开发时直接跑服务
-uv run python -m openfox serve
-```
-
-关键目录：
-
-- `openfox/utils/agent.py` — Agent、工具、调度、飞书接口与 FastAPI 应用组装。
-- `openfox/cli/commands.py` — CLI 入口（`serve` / `agent`）。
-- `openfox/modes/config.py` — 配置模型。
-- `openfox/tools/` — 各类工具实现。
-- `openfox/skills/` — 技能与 SKILL.md。
-
----
 
 ## 加群
 
