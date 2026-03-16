@@ -12,7 +12,7 @@
 
 ```bash
 # 克隆并进入项目
-git clone https://github.com/你的账号/openfox.git
+git clone https://github.com/InfernalAzazel/openfox.git
 cd openfox
 
 # 使用 uv 安装（推荐）
