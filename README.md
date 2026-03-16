@@ -1,10 +1,8 @@
-
-
 <div align="center"><h1>🦊 OpenFox — 个人人工智能助手</h1></div>
 
 <div align="center">
 
-excellent back office management system solution
+自托管轻量 AI 助手，多工具与飞书通道支持
 
 [![python](https://img.shields.io/badge/python-3.10.x-blue.svg?style=flat-square)](https://docs.python.org/3.12/index.html)
 [![agno](https://img.shields.io/badge/agno-orange.svg?style=flat-square)](https://github.com/agno-agi/agno.git)
