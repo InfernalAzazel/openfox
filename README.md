@@ -67,23 +67,6 @@ python -m openfox serve
 
 ![feishu](./assets/feishu.gif)
 
-## 架构示意
-
-```
-飞书 / 其他通道（未来）
-        │
-        ▼
-┌───────────────────────────────┐
-│     OpenFox HTTP 服务         │
-│     (FastAPI, 默认 :7777)     │
-└──────────────┬────────────────┘
-               │
-               ├─ Agno Agent (id: openfox)
-               ├─ 飞书接口
-               ├─ 调度器（MongoDB）
-               └─ 工具：Cron / Shell / AkShare / MCP / Config
-```
-
 ---
 
 ## 配置说明
@@ -115,8 +98,6 @@ python -m openfox serve
 - **channels.feishu**：飞书开放平台应用凭证与事件订阅密钥。
 - **mcps**：MCP server 列表，每项可为 `command`+`args`（stdio）或 `url`（HTTP）。
 
-完整配置字段见 `openfox/modes/config.py`。
-
 ---
 
 ## 飞书接入
@@ -137,8 +118,6 @@ python -m openfox serve
 ---
 
 ## 与 OpenClaw 的对比
-
-[OpenClaw](https://github.com/openclaw/openclaw) 是「Your own personal AI assistant. Any OS. Any Platform.」—— 多通道、多端、本地优先。OpenFox 与之类似，但更聚焦：
 
 | 维度       | OpenClaw              | OpenFox                    |
 |------------|------------------------|----------------------------|
