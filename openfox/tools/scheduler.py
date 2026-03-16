@@ -1,5 +1,6 @@
 from agno.scheduler import ScheduleManager
 from agno.tools import Toolkit
+from agno.utils.log import logger
 
 
 class CronTools(Toolkit):
@@ -35,7 +36,7 @@ class CronTools(Toolkit):
             channel: 到点发送给 agent 的频道，例如 {"type": "feishu", "open_id": "open_id", "chat_id": "chat_id"}
             timezone: 时区，默认 Asia/Shanghai
         """
-        print(f"create_schedule: name={name}, cron_expr={cron_expr}, message={message}, timezone={timezone}")
+        logger.info(f"create_schedule: name={name}, cron_expr={cron_expr}, message={message}, timezone={timezone}")
         await self.schedule_mgr.acreate(
                 name=name,
                 cron=cron_expr,
@@ -48,13 +49,24 @@ class CronTools(Toolkit):
         return f"定时任务创建成功"
 
     async def list(self) -> str:
+        """
+        获取定时任务列表。
+        """
         schedules = await self.schedule_mgr.alist(enabled=True)
         return f"定时任务列表: {schedules}"
 
     async def delete(self, schedule_id: str) -> str:
+        """
+        删除定时任务
+        - 需要先调用 list 方法获取 schedule_id
+        """
         await self.schedule_mgr.adelete(schedule_id)
         return f"定时任务删除成功"
 
     async def disable(self, schedule_id: str) -> str:
+        """
+        禁用定时任务
+        - 需要先调用 list 方法获取 schedule_id
+        """
         await self.schedule_mgr.adisable(schedule_id)
         return f"定时任务禁用成功"

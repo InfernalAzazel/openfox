@@ -1,4 +1,3 @@
-import logging
 from contextlib import asynccontextmanager
 from agno.agent import Agent
 from agno.models.litellm import LiteLLM
@@ -98,7 +97,7 @@ class OpenMeshAgent:
             "把「帮我做Y」整句作为 message；message 是到点时发给 Agent 的指令，不要包含时间词。",
             "当用户询问有哪些定时任务时使用 CronTools.list",
             "如果技能文档给出 CLI 示例，必须使用 run_shell 执行。",
-            "当用户希望通过聊天配置 MCP 时，使用 mcp_config 工具（修改后提示重启服务生效）。",
+            "当用户希望通过聊天配置 MCP 时，使用 mcp_config 工具。",
             f"默认 timezone 使用 {self.DEFAULT_TZ}。",
         ]
 
