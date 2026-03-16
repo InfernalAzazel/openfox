@@ -1,0 +1,20 @@
+[project]
+name = "openfox"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "agno[scheduler]>=2.5.9",
+    "akshare>=1.18.40",
+    "asyncer>=0.0.17",
+    "fastapi[standard]>=0.135.1",
+    "httpx>=0.28.1",
+    "json-repair>=0.58.5",
+    "lark-oapi>=1.5.3",
+    "litellm>=1.82.2",
+    "mcp>=1.26.0",
+    "motor>=3.7.1",
+    "pymongo>=4.16.0",
+    "typer>=0.24.1",
+]

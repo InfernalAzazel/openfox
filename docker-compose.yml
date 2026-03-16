@@ -1,0 +1,35 @@
+# 部署 MongoDB（带账号密码） + openfox
+# 使用前请复制 .env.example 为 .env 并填写 MongoDB 账号密码及 openfox 所需变量
+
+services:
+  mongodb:
+    image: mongo:8
+    container_name: openfox-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: test
+      MONGO_INITDB_ROOT_PASSWORD: test
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  openfox:
+    build: .
+    image: openfox:latest
+    container_name: openfox
+    restart: unless-stopped
+    depends_on:
+      mongodb:
+        condition: service_healthy  
+    ports:
+      - "7777:7777"
+
+volumes:
+  mongodb_data:
