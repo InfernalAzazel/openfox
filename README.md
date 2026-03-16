@@ -167,4 +167,4 @@ uv run python -m openfox serve
 - 加微拉你入群
 - 加群请注明来意: 留言 openfox
 
-<img src="assets/kylin.png" width="64" alt="64" />
+<img src="assets/kylin.png" width="280" alt="280" />
