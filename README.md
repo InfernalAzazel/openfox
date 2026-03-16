@@ -4,7 +4,7 @@
 
 自托管轻量 AI 助手，多工具与飞书通道支持
 
-[![python](https://img.shields.io/badge/python-3.10.x-blue.svg?style=flat-square)](https://docs.python.org/3.12/index.html)
+[![python](https://img.shields.io/badge/python-3.12.x-blue.svg?style=flat-square)](https://docs.python.org/3.12/index.html)
 [![agno](https://img.shields.io/badge/agno-orange.svg?style=flat-square)](https://github.com/agno-agi/agno.git)
 [![mongodb](https://img.shields.io/badge/mongodb-8-brightgreen.svg?style=flat-square)](https://github.com/mongodb/mongo.git)
 
