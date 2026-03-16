@@ -162,10 +162,9 @@ uv run python -m openfox serve
 
 ---
 
-## 贡献
+## 加群
 
-欢迎提 Issue 和 PR，目标：更好用的中文 LLM Agent 中控、易扩展的 MCP/工具平台、适合本地与企业落地的多通道助手。
+- 加微拉你入群
+- 加群请注明来意: 留言 openfox
 
----
-
-**OpenFox** — 你的个人 AI 助手。自托管，Python 栈，飞书先行。
+![wechat](./assets/kylin.png)
