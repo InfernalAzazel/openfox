@@ -125,14 +125,11 @@ LLM API Key (llm.api_key): 你的 Key
 | 工具/扩展  | 内置浏览器、Canvas、Cron 等 | Cron、Shell、AkShare、MCP、Skills |
 | 定位       | 全平台个人助手         | 自托管、中文场景、轻量中控 |
 
-适合：希望用 **Python 生态** 自建一个类似 OpenClaw 的「单网关 + 多工具 + 飞书」助手的用户。
-
 ---
 
 
 ## 加群
 
-- 加微拉你入群
 - 加群请注明来意: 留言 openfox
 
-<img src="assets/kylin.png" width="280" alt="280" />
+<img src="assets/kylin.png" width="220" alt="220" />
