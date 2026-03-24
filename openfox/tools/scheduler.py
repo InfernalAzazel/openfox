@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 from agno.scheduler import ScheduleManager
 from agno.tools import Toolkit
 from agno.utils.log import logger
+from sqlalchemy import Engine
 
 
 class CronTools(Toolkit):
@@ -56,7 +57,7 @@ class CronTools(Toolkit):
                 if_exists="update",
             )
         except (ValueError, RuntimeError) as e:
-            logger.warning("create_schedule failed: %s", e)
+            logger.warning(f"create_schedule failed: {e}")
             return f"Failed to create schedule: {e}"
 
         if schedule is None:

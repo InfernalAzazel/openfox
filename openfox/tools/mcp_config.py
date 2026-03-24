@@ -1,7 +1,7 @@
 from typing import Any
 from agno.tools import Toolkit
 from json_repair import loads as json_repair_loads
-from openfox.modes.config import MCPServerConfig
+from openfox.schemas.config import MCPServerConfig
 from openfox.tools.config import ConfigTools
 
 

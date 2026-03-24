@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from agno.tools import Toolkit
 from json_repair import load as json_repair_load
-from openfox.modes.config import Config
+from openfox.schemas.config import Config
 
 
 class ConfigTools(Toolkit):

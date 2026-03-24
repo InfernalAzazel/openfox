@@ -2,9 +2,8 @@ from __future__ import annotations
 import secrets
 import typer
 import uvicorn
-from pymongo import MongoClient
+from openfox.schemas.config import Config
 from openfox.tools.config import ConfigTools
-from openfox.modes.config import Config
 
 app = typer.Typer(
     name="openfox",
@@ -22,28 +21,9 @@ def init():
 
     typer.secho("🦊 初始化 OpenFox 配置", fg=typer.colors.GREEN, bold=True)
 
-    # 使用内置默认值初始化配置
+    # 使用内置默认值初始化配置（含 db_url / db_name，可自行编辑配置文件）
     config = Config()
 
-    # MongoDB 配置
-    config.db_url = typer.prompt(typer.style("MongoDB 连接字符串 (db_url)", fg=typer.colors.CYAN), default=config.db_url)
-    config.db_name = typer.prompt(typer.style("MongoDB 数据库名称 (db_name)", fg=typer.colors.CYAN), default=config.db_name)
-
-    # 检测 MongoDB 是否可用
-    typer.secho("检测 MongoDB 连接中...", fg=typer.colors.BLUE)
-    try:
-        client = MongoClient(config.db_url, serverSelectionTimeoutMS=3000)
-        client.admin.command("ping")
-        typer.secho("✅ MongoDB 连接成功。", fg=typer.colors.GREEN)
-    except Exception as e:  # noqa: BLE001
-        typer.secho("⚠️ MongoDB 连接失败，请检查连接字符串。", fg=typer.colors.RED)
-        typer.secho(
-            "你可以参考 MongoDB 官方连接字符串文档："
-            "https://www.mongodb.com/docs/manual/reference/connection-string/",
-            fg=typer.colors.YELLOW,
-        )
-        return
-    
     # 是否启用文档
     docs_enabled = typer.prompt(typer.style("是否启用文档 (docs_enabled)", fg=typer.colors.CYAN), default=config.docs_enabled)
     config.docs_enabled = docs_enabled

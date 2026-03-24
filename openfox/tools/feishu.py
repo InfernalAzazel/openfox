@@ -1,7 +1,10 @@
 import json
 from typing import Any, Dict, List, Optional
+
+from agno.agent import RunOutput
+from agno.run.base import RunStatus
 from agno.tools import Toolkit
-from agno.utils.log import log_info, log_warning, logger
+from agno.utils.log import logger
 from lark_oapi import Client
 from lark_oapi.api.im.v1.model.create_message_request import CreateMessageRequest
 from lark_oapi.api.im.v1.model.create_message_request_body import CreateMessageRequestBody
@@ -78,35 +81,3 @@ class FeishuTools(Toolkit):
             raise RuntimeError(f"Feishu API error: {resp.msg}")
         msg_id = getattr(resp.data, "message_id", None) or "unknown"
         return f"Message sent. message_id: {msg_id}"
-
-    async def on_change(self, schedule_doc: Dict[str, Any], run_doc: Dict[str, Any]) -> None:
-        """Schedule run callback: notify via Feishu when channel in schedule.payload is configured."""
-
-        payload = schedule_doc.get("payload") or {}
-        channel = payload.get("channel") or {}
-        chat_id = channel.get("chat_id") or ""
-
-        status = run_doc.get("status")
-        run_id = run_doc.get("id") or run_doc.get("_id")
-        schedule_id = run_doc.get("schedule_id")
-        output_content = str((run_doc.get("output") or {}).get("content", ""))
-
-
-        if channel.get("type") != "feishu" or not chat_id:
-            return
-
-        if status == "success":
-            await self.send_text_message(
-                text=output_content,
-                receive_id=chat_id,
-                receive_id_type="chat_id",
-            )
-            log_info("ScheduleNotice success: " + f"schedule_id={schedule_id}, run_id={run_id}")
-        elif status == "failed":
-            error = run_doc.get("error")
-            await self.send_text_message(
-                text=f"Schedule failed: {error}",
-                receive_id=chat_id,
-                receive_id_type="chat_id",
-            )
-            log_warning(f"ScheduleNotice failed: schedule_id={schedule_id}, run_id={run_id}, error={error}")

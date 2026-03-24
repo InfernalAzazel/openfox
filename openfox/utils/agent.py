@@ -1,90 +1,40 @@
-from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import  List
 from agno.agent import Agent
+from agno.db.sqlite import AsyncSqliteDb
 from agno.models.litellm import LiteLLM
 from agno.os import AgentOS
 from agno.os.settings import AgnoAPISettings
-from agno.skills import Skills, LocalSkills
 from agno.scheduler import ScheduleManager
+from agno.skills import Skills, LocalSkills
+from agno.tools import Toolkit
 from openfox.interfaces.feishu import Feishu
-from openfox.tools.scheduler import CronTools
-from openfox.tools.shell import run_shell
 from openfox.tools.akshare_stock import AkshareStockTools
+from openfox.tools.config import ConfigTools
 from openfox.tools.feishu import FeishuTools
 from openfox.tools.mcp_config import MCPConfigTools
-from openfox.db.agno_mongo import AsyncMongoDb
-from openfox.utils.schedule_notice import ScheduleNotice
-from agno.tools import Toolkit
-from typing import List, Optional
-from agno.tools.mcp import MultiMCPTools
-from mcp import StdioServerParameters
-from agno.tools.mcp.params import StreamableHTTPClientParams
-from openfox.tools.config import ConfigTools
-from openfox.modes.config import Config
+from openfox.tools.scheduler import CronTools
+from openfox.tools.shell import run_shell
+from openfox.utils.mcps import build_mcps
+from openfox.utils.notify import send_notification
 
 
 # Work around agno ScheduleManager: on interpreter exit, __del__ may run without `_pool` set.
 ScheduleManager.close = lambda self: (getattr(self, "_pool", None) and (self._pool.shutdown(wait=False), setattr(self, "_pool", None)))
 
 
-def make_lifespan(db, tools: List[Toolkit] = []):
-
-    @asynccontextmanager
-    async def _lifespan(app):
-        sn = ScheduleNotice(db)
-        for tool in tools:
-            sn.add_handler(tool.on_change)
-        await sn.start()
-        yield
-        await sn.stop()
-        await db.close()
-
-    return _lifespan
-
-def build_mcps(config: Config) -> Optional[MultiMCPTools]:
-    """Build MultiMCPTools from application config."""
-    if not config.mcps:
-        return None
-
-    server_params = []
-    timeout_seconds = 30
-
-    for mcp_cfg in config.mcps:
-        if mcp_cfg.command:
-            server_params.append(
-                StdioServerParameters(
-                    command=mcp_cfg.command,
-                    args=mcp_cfg.args,
-                    env=mcp_cfg.env or None,
-                )
-            )
-            timeout_seconds = max(timeout_seconds, mcp_cfg.tool_timeout)
-        elif mcp_cfg.url:
-            server_params.append(
-                StreamableHTTPClientParams(
-                    url=mcp_cfg.url,
-                    headers=mcp_cfg.headers or None,
-                )
-            )
-            timeout_seconds = max(timeout_seconds, mcp_cfg.tool_timeout)
-
-    if not server_params:
-        return None
-
-    return MultiMCPTools(
-        server_params_list=server_params,
-        timeout_seconds=timeout_seconds,
-        allow_partial_failure=True,
-    )
-
 class OpenFoxAgent:
     """Wires OpenFox config, storage, tools, and AgentOS runtime."""
+
+    db_path = Path.home() / ".openfox" / "storage.db"
 
     def __init__(self):
         self.feishu_tools = FeishuTools()
         self.config_tools = ConfigTools()
         self.mcp_config_tools = MCPConfigTools(self.config_tools)
         self.config = self.config_tools.load()
-        self.db = AsyncMongoDb(db_url=self.config.db_url, db_name=self.config.db_name)
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self.db = AsyncSqliteDb(db_file=str(self.db_path))
         self.schedule_mgr = ScheduleManager(self.db)
 
         self.instructions = [
@@ -121,6 +71,7 @@ class OpenFoxAgent:
             skills=Skills(loaders=[LocalSkills(self.config.skills_path)]),
             db=self.db,
             markdown=True,
+            post_hooks=[send_notification],
         )
         settings = AgnoAPISettings(
             os_security_key=self.config.os_security_key,
@@ -136,7 +87,6 @@ class OpenFoxAgent:
             db=self.db,
             scheduler=True,
             scheduler_poll_interval=15,
-            lifespan=make_lifespan(self.db, [self.feishu_tools]),
             settings=settings,
         )
         self.app = self.os.get_app()
