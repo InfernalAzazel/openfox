@@ -1,18 +1,16 @@
+from datetime import datetime
+from typing import Any
+from zoneinfo import ZoneInfo
 from agno.scheduler import ScheduleManager
 from agno.tools import Toolkit
 from agno.utils.log import logger
 
 
 class CronTools(Toolkit):
-    def __init__(self, endpoint: str, schedule_mgr: ScheduleManager, **kwargs):
+    def __init__(self, endpoint: str, schedule_mgr: ScheduleManager, **kwargs: Any):
         self.endpoint = endpoint
         self.schedule_mgr = schedule_mgr
-        tools = [
-            self.create,
-            self.list,
-            self.delete,
-            self.disable,
-        ]
+        tools = [self.create, self.list, self.get, self.delete, self.disable]
         super().__init__(name="cron_tools", tools=tools, **kwargs)
 
     async def create(
@@ -20,56 +18,95 @@ class CronTools(Toolkit):
         name: str,
         cron_expr: str,
         message: str,
-        channel: dict = {},
+        channel: dict,
         timezone: str = "Asia/Shanghai",
     ) -> str:
         """
-        创建定时任务。
+        Create a scheduled (cron) task.
 
-        当用户说「每X帮我做Y」时：X 是周期（如每分钟、每天9点）→ 转为 cron_expr；Y 是到点要执行的动作 → 作为 message。
-        message 是到点时发给本 Agent 的完整指令，Agent 会按这条消息执行（可触发技能）。message 里不要包含「每X」等时间描述。
+        When the user says something like "every X do Y for me": X is the schedule (e.g. every minute, 9:00 daily)
+        → map it to cron_expr; Y is what to run at that time → use as message.
+        message is the full instruction sent to this Agent when the job fires; the Agent runs from that message
+        (skills may be triggered). Do not put schedule wording like "every X" inside message.
 
-        参数:
-            name: 任务名称，唯一标识（可由 agent 推断）
-            cron_expr: cron 五段式（分 时 日 月 周），如 "* * * * *" 每分钟，"0 9 * * *" 每天 9:00（需用户确认）
-            message: 到点发送给 agent 的消息（需用户确认），例如 "帮我总结 https://example.com"
-            channel: 到点发送给 agent 的频道，例如 {"type": "feishu", "open_id": "open_id", "chat_id": "chat_id"}
-            timezone: 时区，默认 Asia/Shanghai
+        Args:
+            name: Task name, unique identifier (may be inferred by the agent).
+            cron_expr: Standard five-field cron (minute hour day month weekday), e.g. "* * * * *" every minute,
+                "0 9 * * *" daily at 9:00 (confirm with the user).
+            message: Message sent to the agent at run time (confirm with the user), e.g. "Summarize https://example.com".
+            channel: Channel for the agent at run time, e.g. {"type": "feishu", "open_id": "open_id", "chat_id": "chat_id"}.
+            timezone: Time zone; default Asia/Shanghai.
         """
-        logger.info(f"create_schedule: name={name}, cron_expr={cron_expr}, message={message}, timezone={timezone}")
-        await self.schedule_mgr.acreate(
+        logger.info(
+            "create_schedule: name=%s cron_expr=%s message=%s timezone=%s"
+            % (name, cron_expr, message, timezone)
+        )
+        if not channel:
+            return "channel is required"
+        payload = {"message": message, "channel": channel}
+
+        try:
+            schedule = await self.schedule_mgr.acreate(
                 name=name,
                 cron=cron_expr,
                 endpoint=self.endpoint,
                 method="POST",
-                payload={"message": message, "channel": channel},
+                payload=payload,
                 timezone=timezone,
                 if_exists="update",
             )
-        return f"定时任务创建成功"
+        except (ValueError, RuntimeError) as e:
+            logger.warning("create_schedule failed: %s", e)
+            return f"Failed to create schedule: {e}"
+
+        if schedule is None:
+            logger.error("create_schedule returned no schedule")
+            return "Failed to create schedule: no schedule returned"
+
+        tz_name = schedule.timezone or timezone
+        next_ts = schedule.next_run_at
+        if next_ts is None:
+            when = "next run unknown"
+        else:
+            try:
+                dt = datetime.fromtimestamp(int(next_ts), tz=ZoneInfo(tz_name))
+                when = f"{dt.strftime('%Y-%m-%d %H:%M:%S %Z')} (epoch {next_ts})"
+            except Exception:
+                when = f"epoch {next_ts} (timezone {tz_name})"
+
+        return (
+            f"Schedule created successfully. schedule_id={schedule.id} name={schedule.name!r} "
+            f"next_run={when}"
+        )
 
     async def list(self) -> str:
-        """
-        获取定时任务列表。
-        """
+        """List scheduled tasks."""
         schedules = await self.schedule_mgr.alist(enabled=True)
-        logger.info(f"list_schedule: schedules={schedules}")
-        return f"定时任务列表: {schedules}"
+        logger.info("list_schedule: schedules=%s" % (schedules,))
+        return f"Scheduled tasks: {schedules}"
+
+    async def get(self, schedule_id: str) -> str:
+        """Get a scheduled task."""
+        schedule = await self.schedule_mgr.aget(schedule_id)
+        logger.info("get_schedule: schedule_id=%s" % (schedule_id,))
+        return f"Scheduled task: {schedule}"
 
     async def delete(self, schedule_id: str) -> str:
         """
-        删除定时任务
-        - 需要先调用 list 方法获取 schedule_id
+        Delete a scheduled task.
+
+        Call list first to obtain schedule_id.
         """
         await self.schedule_mgr.adelete(schedule_id)
-        logger.info(f"delete_schedule: schedule_id={schedule_id}")
-        return f"定时任务删除成功"
+        logger.info("delete_schedule: schedule_id=%s" % (schedule_id,))
+        return f"delete_schedule: schedule_id={schedule_id}"
 
     async def disable(self, schedule_id: str) -> str:
         """
-        禁用定时任务
-        - 需要先调用 list 方法获取 schedule_id
+        Disable a scheduled task.
+
+        Call list first to obtain schedule_id.
         """
         await self.schedule_mgr.adisable(schedule_id)
-        logger.info(f"disable_schedule: schedule_id={schedule_id}")
-        return f"定时任务禁用成功"
+        logger.info("disable_schedule: schedule_id=%s" % (schedule_id,))
+        return f"disable_schedule: schedule_id={schedule_id}"

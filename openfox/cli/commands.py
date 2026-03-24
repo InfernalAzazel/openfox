@@ -95,7 +95,7 @@ def serve(host: str = "0.0.0.0", port: int = 7777) -> None:
     启动 OpenFox HTTP 服务。
     """
     init()
-    # 必须在 init() 之后导入 OpenMeshAgent，否则会读取不到配置
-    from openfox.utils.agent import OpenMeshAgent
-    openfox_agent = OpenMeshAgent()
+    # 必须在 init() 之后导入 OpenFoxAgent，否则会读取不到配置
+    from openfox.utils.agent import OpenFoxAgent
+    openfox_agent = OpenFoxAgent()
     uvicorn.run(openfox_agent.app, host=host, port=port)

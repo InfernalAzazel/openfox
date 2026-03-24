@@ -1,18 +1,14 @@
 from typing import List, Optional, Union
-
 from fastapi.routing import APIRouter
-
 from agno.agent import Agent, RemoteAgent
 from agno.os.interfaces.base import BaseInterface
 from agno.team import RemoteTeam, Team
 from agno.workflow import RemoteWorkflow, Workflow
-
 from openfox.interfaces.router import attach_routes
 
 
 class Feishu(BaseInterface):
     type = "feishu"
-
     router: APIRouter
 
     def __init__(

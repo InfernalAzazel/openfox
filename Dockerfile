@@ -15,5 +15,3 @@ RUN uv sync --frozen --no-dev 2>/dev/null || uv sync --no-dev
 ENV PATH="/app/.venv/bin:$PATH"
 
 EXPOSE 7777
-
-CMD ["python", "-m", "openfox", "serve"]

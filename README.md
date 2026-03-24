@@ -100,7 +100,7 @@ LLM API Key (llm.api_key): 你的 Key
 
 ## 飞书接入
 
-- webhook url http//:你的ip地址/feishu/webhook
+- webhook url http//:你的ip地址/feishu/event
 
 1. 在 [飞书开放平台](https://open.feishu.cn/) 创建应用，获取 **App ID**、**App Secret**。
 2. 开启「事件订阅」与「消息与群组」等权限，配置请求地址：`https://你的域名/openfox/feishu`（或内网穿透地址），并填写 **Encrypt Key**、**Verification Token**。

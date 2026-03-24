@@ -2,44 +2,54 @@ from pydantic import Field
 from pydantic_settings import BaseSettings
 from typing import List
 
+
 class FeishuConfig(BaseSettings):
-    """飞书通道配置。"""
-    app_id: str = Field(default="", description="飞书开放平台 App ID")
-    app_secret: str = Field(default="", description="飞书开放平台 App Secret")
-    encrypt_key: str = Field(default="", description="事件订阅加密密钥")
-    verification_token: str = Field(default="", description="事件订阅校验 Token")
+    """Feishu (Lark) channel settings."""
+
+    app_id: str = Field(default="", description="Feishu Open Platform app ID")
+    app_secret: str = Field(default="", description="Feishu Open Platform app secret")
+    encrypt_key: str = Field(default="", description="Event subscription encrypt key")
+    verification_token: str = Field(default="", description="Event subscription verification token")
+
 
 class LLMConfig(BaseSettings):
-    """LLM 配置。"""
-    model_name: str = Field(default="deepseek/deepseek-chat", description="模型名称")
-    api_base: str = Field(default="https://api.deepseek.com", description="API 基础 URL")
-    api_key: str = Field(default="", description="API 密钥")
+    """LLM settings."""
+
+    model_name: str = Field(default="deepseek/deepseek-chat", description="Model name")
+    api_base: str = Field(default="https://api.deepseek.com", description="API base URL")
+    api_key: str = Field(default="", description="API key")
+
 
 class ChannelsConfig(BaseSettings):
-    """通道配置。"""
+    """Channel integrations."""
+
     feishu: FeishuConfig = Field(default_factory=FeishuConfig)
 
+
 class MCPServerConfig(BaseSettings):
-    """MCP server 连接配置（stdio 或 HTTP）"""
-    name: str = Field(default="", description="配置名称")
-    command: str = Field(default="", description="命令")
-    args: list[str] = Field(default_factory=list, description="命令参数")
-    env: dict[str, str] = Field(default_factory=dict, description="环境变量")
-    url: str = Field(default="", description="HTTP 端点 URL")
-    headers: dict[str, str] = Field(default_factory=dict, description="HTTP 自定义头部")
-    tool_timeout: int = Field(default=30, description="工具调用超时时间")
+    """MCP server connection (stdio or HTTP)."""
+
+    name: str = Field(default="", description="Config display name")
+    command: str = Field(default="", description="Command (stdio transport)")
+    args: list[str] = Field(default_factory=list, description="Command arguments")
+    env: dict[str, str] = Field(default_factory=dict, description="Environment variables")
+    url: str = Field(default="", description="HTTP endpoint URL")
+    headers: dict[str, str] = Field(default_factory=dict, description="HTTP custom headers")
+    tool_timeout: int = Field(default=30, description="Tool call timeout in seconds")
+
 
 class Config(BaseSettings):
-    """配置。"""
+    """Application configuration."""
+
     agent_id: str = Field(default="OpenFox", description="Agent ID")
-    skills_path: str = Field(default="openfox/skills", description="技能路径")
-    docs_enabled: bool = Field(default=True, description="是否启用文档")
-    authorization_enabled: bool = Field(default=True, description="是否启用授权")
-    os_security_key: str = Field(default="", description="AgentOS 安全密钥")
-    cors_origin_list: List[str] = Field(default_factory=list, description="CORS 允许的源列表")
-    time_zone: str = Field(default="Asia/Shanghai", description="时区")
-    db_url: str = Field(default="mongodb://test:test@127.0.0.1:27017", description="MongoDB 连接 URL")
-    db_name: str = Field(default="openfox", description="MongoDB 数据库名称")
-    llm: LLMConfig = Field(default_factory=LLMConfig, description="LLM 配置")
-    channels: ChannelsConfig = Field(default_factory=ChannelsConfig, description="通道配置")
-    mcps: List[MCPServerConfig] = Field(default_factory=list, description="MCP server 连接配置")
+    skills_path: str = Field(default="openfox/skills", description="Skills directory path")
+    docs_enabled: bool = Field(default=True, description="Enable API docs")
+    authorization_enabled: bool = Field(default=True, description="Enable authorization")
+    os_security_key: str = Field(default="", description="AgentOS security key")
+    cors_origin_list: List[str] = Field(default_factory=list, description="Allowed CORS origins")
+    time_zone: str = Field(default="Asia/Shanghai", description="Default timezone")
+    db_url: str = Field(default="mongodb://test:test@127.0.0.1:27017", description="MongoDB connection URL")
+    db_name: str = Field(default="openfox", description="MongoDB database name")
+    llm: LLMConfig = Field(default_factory=LLMConfig, description="LLM settings")
+    channels: ChannelsConfig = Field(default_factory=ChannelsConfig, description="Channel integrations")
+    mcps: List[MCPServerConfig] = Field(default_factory=list, description="MCP server connections")

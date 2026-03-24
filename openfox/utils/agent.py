@@ -22,7 +22,7 @@ from openfox.tools.config import ConfigTools
 from openfox.modes.config import Config
 
 
-# 避免 agno 的 ScheduleManager 在解释器退出时因缺少 `_pool` 属性报错
+# Work around agno ScheduleManager: on interpreter exit, __del__ may run without `_pool` set.
 ScheduleManager.close = lambda self: (getattr(self, "_pool", None) and (self._pool.shutdown(wait=False), setattr(self, "_pool", None)))
 
 
@@ -41,7 +41,7 @@ def make_lifespan(db, tools: List[Toolkit] = []):
     return _lifespan
 
 def build_mcps(config: Config) -> Optional[MultiMCPTools]:
-    """根据配置构建 MCP 工具集合。"""
+    """Build MultiMCPTools from application config."""
     if not config.mcps:
         return None
 
@@ -76,8 +76,8 @@ def build_mcps(config: Config) -> Optional[MultiMCPTools]:
         allow_partial_failure=True,
     )
 
-class OpenMeshAgent:
-    """封装 OpenMesh Agent 的配置、存储与运行时。"""
+class OpenFoxAgent:
+    """Wires OpenFox config, storage, tools, and AgentOS runtime."""
 
     def __init__(self):
         self.feishu_tools = FeishuTools()
@@ -88,13 +88,14 @@ class OpenMeshAgent:
         self.schedule_mgr = ScheduleManager(self.db)
 
         self.instructions = [
-            "当用户要求定时或周期执行任务时使用 CronTools.create",
-            "用户说「每X帮我做Y」时：把「每X」转成 cron_expr（如每分钟→* * * * *），"
-            "把「帮我做Y」整句作为 message；message 是到点时发给 Agent 的指令，不要包含时间词。",
-            "当用户询问有哪些定时任务时使用 CronTools.list",
-            "如果技能文档给出 CLI 示例，必须使用 run_shell 执行。",
+            "当用户要求定时或周期执行任务时使用 CronTools.create。",
+            "用户说「每X帮我做Y」时：将「每X」映射为 cron_expr（例如每分钟→* * * * *）。",
+            "将「帮我做Y」整句作为 message：message 是到点时 Agent 要执行的任务正文（可含工具调用），不要包含时间或周期描述。",
+            "从用户文本中自动提取创建定时任务所需的参数（cron_expr、message、channel、timezone）。",
+            "当用户询问有哪些定时任务时使用 CronTools.list。",
+            "若技能文档给出 CLI 示例，必须使用 run_shell 执行。",
             "当用户希望通过聊天配置 MCP 时，使用 mcp_config 工具。",
-            f"默认 timezone 使用 {self.config.time_zone}。",
+            f"默认时区为 {self.config.time_zone}。",
         ]
 
         mcps = build_mcps(self.config)
@@ -103,6 +104,7 @@ class OpenMeshAgent:
             run_shell,
             CronTools(endpoint=f"/agents/{self.config.agent_id}/runs", schedule_mgr=self.schedule_mgr),
             AkshareStockTools(),
+            self.feishu_tools,
             self.mcp_config_tools,
         ]
         if mcps is not None:
@@ -120,7 +122,14 @@ class OpenMeshAgent:
             db=self.db,
             markdown=True,
         )
-        self.app = AgentOS(
+        settings = AgnoAPISettings(
+            os_security_key=self.config.os_security_key,
+            docs_enabled=self.config.docs_enabled,
+            authorization_enabled=self.config.authorization_enabled,
+            cors_origin_list=self.config.cors_origin_list if self.config.cors_origin_list else None,
+        )
+
+        self.os = AgentOS(
             name=self.config.agent_id,
             agents=[self.agent],
             interfaces=[Feishu(agent=self.agent)],
@@ -128,10 +137,6 @@ class OpenMeshAgent:
             scheduler=True,
             scheduler_poll_interval=15,
             lifespan=make_lifespan(self.db, [self.feishu_tools]),
-            settings=AgnoAPISettings(
-                os_security_key=self.config.os_security_key,
-                docs_enabled=self.config.docs_enabled,
-                authorization_enabled=self.config.authorization_enabled,
-                cors_origin_list=self.config.cors_origin_list if self.config.cors_origin_list else None,
-            ),
-        ).get_app()
+            settings=settings,
+        )
+        self.app = self.os.get_app()
