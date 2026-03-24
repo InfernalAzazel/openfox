@@ -1,13 +1,12 @@
 import subprocess
 
 
-
 def run_shell(command: str) -> str:
     """
-    执行本地 shell 命令。
+    Run a local shell command.
 
-    参数:
-        command: 要执行的完整 shell 命令（执行前会要求用户确认）。
+    Args:
+        command: Full shell command to run (user confirmation is required before execution).
     """
     try:
         result = subprocess.run(
@@ -28,4 +27,4 @@ def run_shell(command: str) -> str:
         return stdout or "(no output)"
 
     except Exception as e:
-        return f"执行失败: {e}"
+        return f"Execution failed: {e}"

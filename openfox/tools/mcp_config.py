@@ -6,7 +6,7 @@ from openfox.tools.config import ConfigTools
 
 
 class MCPConfigTools(Toolkit):
-    """MCP 配置工具：查看、新增、删除 MCP 配置。"""
+    """MCP configuration tools: view, add, and remove MCP configurations."""
 
     def __init__(self, config_tools: ConfigTools | None = None) -> None:
         self._config_tools = config_tools or ConfigTools()
@@ -23,7 +23,7 @@ class MCPConfigTools(Toolkit):
         )
 
     def list_mcps(self) -> list[dict[str, Any]]:
-        """查看当前 MCP 配置。"""
+        """View the current MCP configuration."""
         cfg = self._config_tools.load()
         return [item.model_dump(by_alias=False) for item in cfg.mcps]
 
@@ -35,23 +35,23 @@ class MCPConfigTools(Toolkit):
         env: str = "{}",
         tool_timeout: int = 30,
     ) -> str:
-        """新增 stdio MCP 配置。
+        """Add a stdio MCP configuration.
 
         Args:
-            name: MCP 配置名称，用于删除和识别。
-            command: 可执行命令，如 `npx`。
-            args: JSON 字符串数组，如 `[\"mcp-server-weibo\"]`。
-            env: JSON 字符串对象，如 `{\"HTTP_PROXY\":\"http://127.0.0.1:7890\"}`。
-            tool_timeout: 工具超时秒数。
+            name: MCP configuration name, used for deletion and identification.
+            command: Executable command, e.g. `npx`.
+            args: JSON string of an array, e.g. `[\"mcp-server-weibo\"]`.
+            env: JSON string of an object, e.g. `{\"HTTP_PROXY\":\"http://127.0.0.1:7890\"}`.
+            tool_timeout: Tool timeout in seconds.
         """
         cfg = self._config_tools.load()
 
         parsed_args = json_repair_loads(args) if args else []
         parsed_env = json_repair_loads(env) if env else {}
         if not isinstance(parsed_args, list):
-            raise ValueError("args 必须是 JSON 数组字符串")
+            raise ValueError("args must be a JSON array string")
         if not isinstance(parsed_env, dict):
-            raise ValueError("env 必须是 JSON 对象字符串")
+            raise ValueError("env must be a JSON object string")
 
         cfg.mcps = [m for m in cfg.mcps if m.name != name]
         cfg.mcps.append(
@@ -64,7 +64,7 @@ class MCPConfigTools(Toolkit):
             )
         )
         self._config_tools.save(cfg)
-        return f"已添加 stdio MCP：{name}。请重启服务使其生效。"
+        return f"stdio MCP added: {name}. Restart the service for changes to take effect."
 
     def add_mcp_http(
         self,
@@ -73,19 +73,19 @@ class MCPConfigTools(Toolkit):
         headers: str = "{}",
         tool_timeout: int = 30,
     ) -> str:
-        """新增 HTTP MCP 配置。
+        """Add an HTTP MCP configuration.
 
         Args:
-            name: MCP 配置名称，用于删除和识别。
-            url: Streamable HTTP 端点 URL。
-            headers: JSON 字符串对象，如 `{\"Authorization\":\"Bearer xxx\"}`。
-            tool_timeout: 工具超时秒数。
+            name: MCP configuration name, used for deletion and identification.
+            url: Streamable HTTP endpoint URL.
+            headers: JSON string of an object, e.g. `{\"Authorization\":\"Bearer xxx\"}`.
+            tool_timeout: Tool timeout in seconds.
         """
         cfg = self._config_tools.load()
 
         parsed_headers = json_repair_loads(headers) if headers else {}
         if not isinstance(parsed_headers, dict):
-            raise ValueError("headers 必须是 JSON 对象字符串")
+            raise ValueError("headers must be a JSON object string")
 
         cfg.mcps = [m for m in cfg.mcps if m.name != name]
         cfg.mcps.append(
@@ -97,18 +97,18 @@ class MCPConfigTools(Toolkit):
             )
         )
         self._config_tools.save(cfg)
-        return f"已添加 HTTP MCP：{name}。请重启服务使其生效。"
+        return f"HTTP MCP added: {name}. Restart the service for changes to take effect."
 
     def remove_mcp(self, name: str) -> str:
-        """按名称删除 MCP 配置。"""
+        """Remove an MCP configuration by name."""
         cfg = self._config_tools.load()
         before = len(cfg.mcps)
         cfg.mcps = [m for m in cfg.mcps if m.name != name]
         after = len(cfg.mcps)
         if before == after:
-            return f"未找到 MCP：{name}"
+            return f"MCP not found: {name}"
         self._config_tools.save(cfg)
-        return f"已删除 MCP：{name}。请重启服务使其生效。"
+        return f"MCP removed: {name}. Restart the service for changes to take effect."
 
     def edit_mcp(
         self,
@@ -120,44 +120,45 @@ class MCPConfigTools(Toolkit):
         headers: str = "",
         tool_timeout: int = 0,
     ) -> str:
-        """编辑已存在的 MCP 配置（按 name 匹配）。
+        """Edit an existing MCP configuration (matched by name).
 
-        仅更新传入的字段；未传入（空字符串/0）则保持原值。
+        Only fields that are passed in are updated; omitted values (empty string / 0)
+        keep the previous values.
 
         Args:
-            name: 已存在的 MCP 配置名称。
-            command: 新命令（stdio），如 `npx`。
-            args: 新参数 JSON 数组字符串，如 `[\"mcp-server-weibo\"]`。
-            env: 新环境变量 JSON 对象字符串。
-            url: 新 HTTP 端点 URL。
-            headers: 新 HTTP 头 JSON 对象字符串。
-            tool_timeout: 新超时秒数，<=0 表示不修改。
+            name: Name of an existing MCP configuration.
+            command: New command (stdio), e.g. `npx`.
+            args: New args as a JSON array string, e.g. `[\"mcp-server-weibo\"]`.
+            env: New environment variables as a JSON object string.
+            url: New HTTP endpoint URL.
+            headers: New HTTP headers as a JSON object string.
+            tool_timeout: New timeout in seconds; <= 0 means do not change.
         """
         cfg = self._config_tools.load()
         idx = next((i for i, m in enumerate(cfg.mcps) if m.name == name), -1)
         if idx < 0:
-            return f"未找到 MCP：{name}"
+            return f"MCP not found: {name}"
 
         current = cfg.mcps[idx].model_dump(by_alias=False)
 
-        # 读取并更新结构化字段
+        # Read and update structured fields
         if args:
             parsed_args = json_repair_loads(args)
             if not isinstance(parsed_args, list):
-                raise ValueError("args 必须是 JSON 数组字符串")
+                raise ValueError("args must be a JSON array string")
             current["args"] = [str(x) for x in parsed_args]
         if env:
             parsed_env = json_repair_loads(env)
             if not isinstance(parsed_env, dict):
-                raise ValueError("env 必须是 JSON 对象字符串")
+                raise ValueError("env must be a JSON object string")
             current["env"] = {str(k): str(v) for k, v in parsed_env.items()}
         if headers:
             parsed_headers = json_repair_loads(headers)
             if not isinstance(parsed_headers, dict):
-                raise ValueError("headers 必须是 JSON 对象字符串")
+                raise ValueError("headers must be a JSON object string")
             current["headers"] = {str(k): str(v) for k, v in parsed_headers.items()}
 
-        # 更新简单字段
+        # Update simple scalar fields
         if command:
             current["command"] = command
         if url:
@@ -165,11 +166,11 @@ class MCPConfigTools(Toolkit):
         if tool_timeout > 0:
             current["tool_timeout"] = tool_timeout
 
-        # 互斥：stdio 与 HTTP 配置二选一
+        # Mutually exclusive: stdio vs HTTP—only one transport
         has_command = bool(current.get("command"))
         has_url = bool(current.get("url"))
         if has_command and has_url:
-            # 优先保持本次显式修改的 transport
+            # Prefer the transport explicitly changed in this call
             if command and not url:
                 current["url"] = ""
                 current["headers"] = {}
@@ -178,16 +179,17 @@ class MCPConfigTools(Toolkit):
                 current["args"] = []
                 current["env"] = {}
             else:
-                raise ValueError("command/url 不能同时有效，请只保留一种 MCP 传输方式")
+                raise ValueError(
+                    "command and url cannot both be set; keep only one MCP transport"
+                )
 
         cfg.mcps[idx] = MCPServerConfig.model_validate(current)
         self._config_tools.save(cfg)
-        return f"已更新 MCP：{name}。请重启服务使其生效。"
+        return f"MCP updated: {name}. Restart the service for changes to take effect."
 
     def clear_mcps(self) -> str:
-        """清空全部 MCP 配置。"""
+        """Clear all MCP configurations."""
         cfg = self._config_tools.load()
         cfg.mcps = []
         self._config_tools.save(cfg)
-        return "已清空全部 MCP 配置。请重启服务使其生效。"
-
+        return "All MCP configurations cleared. Restart the service for changes to take effect."
