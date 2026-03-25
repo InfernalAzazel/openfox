@@ -15,67 +15,66 @@ app = typer.Typer(
 def init():
     config_tools = ConfigTools()
     if config_tools.exists():
-        typer.secho(f"配置文件已存在：{config_tools.get_path()}", fg=typer.colors.YELLOW)
-        typer.secho("如需重新初始化，请手动删除该文件后再运行。", fg=typer.colors.YELLOW)
+        typer.secho(f"Config file already exists: {config_tools.get_path()}", fg=typer.colors.YELLOW)
+        typer.secho("To re-run setup, delete that file manually, then run this command again.", fg=typer.colors.YELLOW)
         return
 
-    typer.secho("🦊 初始化 OpenFox 配置", fg=typer.colors.GREEN, bold=True)
+    typer.secho("Initializing OpenFox configuration", fg=typer.colors.GREEN, bold=True)
 
-    # 使用内置默认值初始化配置（含 db_url / db_name，可自行编辑配置文件）
+    # Start from built-in defaults (including db_url / db_name); you can edit the file afterward.
     config = Config()
 
-    # 是否启用文档
-    docs_enabled = typer.prompt(typer.style("是否启用文档 (docs_enabled)", fg=typer.colors.CYAN), default=config.docs_enabled)
+    # Docs
+    docs_enabled = typer.prompt(typer.style("Enable API docs? (docs_enabled)", fg=typer.colors.CYAN), default=config.docs_enabled)
     config.docs_enabled = docs_enabled
-    typer.secho(f"是否启用文档: {docs_enabled}", fg=typer.colors.MAGENTA)
+    typer.secho(f"docs_enabled: {docs_enabled}", fg=typer.colors.MAGENTA)
 
-    # 是否启用授权
-    authorization_enabled = typer.prompt(typer.style("是否启用授权 (authorization_enabled)", fg=typer.colors.CYAN), default=config.authorization_enabled)
+    # Authorization
+    authorization_enabled = typer.prompt(typer.style("Enable authorization? (authorization_enabled)", fg=typer.colors.CYAN), default=config.authorization_enabled)
     config.authorization_enabled = authorization_enabled
-    typer.secho(f"是否启用授权: {authorization_enabled}", fg=typer.colors.MAGENTA)
+    typer.secho(f"authorization_enabled: {authorization_enabled}", fg=typer.colors.MAGENTA)
 
-    # 生成 os_security_key
+    # os_security_key
     os_security_key = secrets.token_hex(16)
     config.os_security_key = os_security_key
-    typer.secho(f"生成 os_security_key: {os_security_key}", fg=typer.colors.MAGENTA)
+    typer.secho(f"Generated os_security_key: {os_security_key}", fg=typer.colors.MAGENTA)
 
-    # CORS 允许的源列表（逗号分隔，内部仍然存 List[str]）
+    # CORS allowed origins (comma-separated; stored as List[str])
     cors_origin_input = typer.prompt(
-        typer.style("CORS 允许的源列表 (cors_origin_list, 用逗号分隔, 默认 * 表示所有源)", fg=typer.colors.CYAN),
-        default=["*"],
+        typer.style("CORS allowed origins (cors_origin_list, comma-separated; * = all)", fg=typer.colors.CYAN),
+        default="*",
     )
     config.cors_origin_list = [origin.strip() for origin in cors_origin_input.split(",") if origin.strip()]
-  
-    # 时区
-    time_zone = typer.prompt(typer.style("时区 (time_zone)", fg=typer.colors.CYAN), default=config.time_zone)
+
+    # Time zone
+    time_zone = typer.prompt(typer.style("Time zone (time_zone)", fg=typer.colors.CYAN), default=config.time_zone)
     config.time_zone = time_zone
 
-    # LLM 配置
-    typer.secho("\n配置 LLM：", fg=typer.colors.GREEN, bold=True)
-    config.llm.model_name = typer.prompt(typer.style("LLM 模型名称 (llm.model_name)", fg=typer.colors.CYAN),default=config.llm.model_name)
-    config.llm.api_base = typer.prompt(typer.style("LLM API Base URL (llm.api_base)", fg=typer.colors.CYAN),default=config.llm.api_base)
-    config.llm.api_key = typer.prompt(typer.style("LLM API Key (llm.api_key)", fg=typer.colors.CYAN))
+    # LLM
+    typer.secho("\nLLM settings:", fg=typer.colors.GREEN, bold=True)
+    config.llm.model_name = typer.prompt(typer.style("LLM model name (llm.model_name)", fg=typer.colors.CYAN), default=config.llm.model_name)
+    config.llm.api_base = typer.prompt(typer.style("LLM API base URL (llm.api_base)", fg=typer.colors.CYAN), default=config.llm.api_base)
+    config.llm.api_key = typer.prompt(typer.style("LLM API key (llm.api_key)", fg=typer.colors.CYAN))
 
-    # 飞书配置
-    typer.secho("\n配置飞书通道：", fg=typer.colors.GREEN, bold=True)
+    # Feishu (Lark) channel
+    typer.secho("\nFeishu (Lark) channel:", fg=typer.colors.GREEN, bold=True)
     feishu = config.channels.feishu
-    feishu.app_id = typer.prompt(typer.style("飞书 App ID (channels.feishu.app_id)", fg=typer.colors.CYAN))
-    feishu.app_secret = typer.prompt(typer.style("飞书 App Secret (channels.feishu.app_secret)", fg=typer.colors.CYAN))
-    feishu.encrypt_key = typer.prompt(typer.style("飞书 Encrypt Key (channels.feishu.encrypt_key)", fg=typer.colors.CYAN))
-    feishu.verification_token = typer.prompt(typer.style("飞书 Verification Token (channels.feishu.verification_token)", fg=typer.colors.CYAN))
+    feishu.app_id = typer.prompt(typer.style("Feishu App ID (channels.feishu.app_id)", fg=typer.colors.CYAN))
+    feishu.app_secret = typer.prompt(typer.style("Feishu App Secret (channels.feishu.app_secret)", fg=typer.colors.CYAN))
+    feishu.encrypt_key = typer.prompt(typer.style("Feishu Encrypt Key (channels.feishu.encrypt_key)", fg=typer.colors.CYAN))
+    feishu.verification_token = typer.prompt(typer.style("Feishu Verification Token (channels.feishu.verification_token)", fg=typer.colors.CYAN))
 
-    # 保存最终配置
     config_tools.save(config)
-    typer.secho(f"配置文件已保存到：{config_tools.get_path()}", fg=typer.colors.GREEN)
-    
+    typer.secho(f"Configuration saved to: {config_tools.get_path()}", fg=typer.colors.GREEN)
+
 
 @app.command()
 def serve(host: str = "0.0.0.0", port: int = 7777) -> None:
     """
-    启动 OpenFox HTTP 服务。
+    Start the OpenFox HTTP server.
     """
     init()
-    # 必须在 init() 之后导入 OpenFoxAgent，否则会读取不到配置
+    # Import after init() so configuration is loaded when the agent starts.
     from openfox.agent import OpenFoxAgent
     openfox_agent = OpenFoxAgent()
     uvicorn.run(openfox_agent.app, host=host, port=port)
