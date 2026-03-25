@@ -9,7 +9,6 @@ from agno.scheduler import ScheduleManager
 from agno.skills import Skills, LocalSkills
 from agno.tools import Toolkit
 from openfox.interfaces.feishu import Feishu
-from openfox.tools.akshare_stock import AkshareStockTools
 from openfox.tools.config import ConfigTools
 from openfox.tools.feishu import FeishuTools
 from openfox.tools.mcp_config import MCPConfigTools
@@ -17,6 +16,7 @@ from openfox.tools.scheduler import CronTools
 from openfox.tools.shell import run_shell
 from openfox.utils.mcps import build_mcps
 from openfox.utils.notify import send_notification
+from openfox.tools.browser import BrowserTools
 
 
 # Work around agno ScheduleManager: on interpreter exit, __del__ may run without `_pool` set.
@@ -53,7 +53,7 @@ class OpenFoxAgent:
         tools_list: List[Toolkit] = [
             run_shell,
             CronTools(endpoint=f"/agents/{self.config.agent_id}/runs", schedule_mgr=self.schedule_mgr),
-            AkshareStockTools(),
+            BrowserTools(),
             self.feishu_tools,
             self.mcp_config_tools,
         ]
