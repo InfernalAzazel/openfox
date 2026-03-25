@@ -37,10 +37,6 @@
 python -m openfox
 
 🦊 初始化 OpenFox 配置
-MongoDB 连接字符串 (db_url) [mongodb://test:test@127.0.0.1:27017]: 
-MongoDB 数据库名称 (db_name) [openfox]: 
-检测 MongoDB 连接中...
-✅ MongoDB 连接成功。
 是否启用文档 (docs_enabled) [True]: 
 是否启用授权 (authorization_enabled) [True]:
 生成 token: 7a151a32b18b95735c327e82bf23ad49 
