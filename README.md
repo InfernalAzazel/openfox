@@ -52,21 +52,17 @@ uv sync   # 或 pip install -e .
 **首次启动**：若没有 `~/.openfox/config.json`，会先走一轮交互式初始化（API 文档开关、鉴权、`os_security_key`、时区、LLM、飞书等），然后启动服务。
 
 ```bash
-python -m openfox serve
+python -m openfox
 # 默认监听 0.0.0.0:7777
 ```
 
-常用参数：
-
-```bash
-python -m openfox serve --host 0.0.0.0 --port 7777
-```
+需要自定义 `--host` / `--port` 时，可先执行 `python -m openfox --help` 查看 CLI 中的子命令与参数说明。
 
 - **Web UI**：浏览器打开 `http://127.0.0.1:7777/web`（端口按实际修改）。
 - **鉴权 Token**：即配置中的 `os_security_key`，在 Web 登录页填入。
 - **非 7777 端口**：默认 CORS 预置了 `:7777` 的 `/web` 来源；若改端口，请在 `cors_origin_list` 中加入例如 `http://127.0.0.1:<端口>` 与 `http://localhost:<端口>`，否则前端可能无法访问 API。
 
-仅想重新初始化时，可删除 `~/.openfox/config.json` 后再次执行 `serve`（会再次跑向导）。已有配置时，`serve` 会跳过向导直接启动。
+仅想重新初始化时，可删除 `~/.openfox/config.json` 后再次执行 `python -m openfox`（会再次跑向导）。已有配置时会跳过向导直接启动。
 
 ---
 
@@ -80,7 +76,7 @@ python -m openfox serve --host 0.0.0.0 --port 7777
 
 1. 在 [飞书开放平台](https://open.feishu.cn/) 创建应用，获取 **App ID**、**App Secret**。
 2. 配置事件订阅与消息权限，请求 URL 指向你的服务（公网或内网穿透），填写 **Encrypt Key**、**Verification Token**。
-3. 将上述信息写入 `~/.openfox/config.json` 的 `channels.feishu`，重启 `python -m openfox serve`。
+3. 将上述信息写入 `~/.openfox/config.json` 的 `channels.feishu`，重启 `python -m openfox`。
 4. 在飞书单聊或群聊中使用应用能力（如 @ 机器人）与 OpenFox 对话。
 
 ---
