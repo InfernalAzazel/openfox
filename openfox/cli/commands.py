@@ -3,6 +3,7 @@ import secrets
 import typer
 import uvicorn
 from openfox.schemas.config import Config
+from openfox.utils.serving import run_uvicorn_with_web_banner
 from openfox.tools.config import ConfigTools
 
 app = typer.Typer(
@@ -40,11 +41,7 @@ def init():
     typer.secho(f"Generated os_security_key: {os_security_key}", fg=typer.colors.MAGENTA)
 
     # CORS allowed origins (comma-separated; stored as List[str])
-    cors_origin_input = typer.prompt(
-        typer.style("CORS allowed origins (cors_origin_list, comma-separated; * = all)", fg=typer.colors.CYAN),
-        default="*",
-    )
-    config.cors_origin_list = [origin.strip() for origin in cors_origin_input.split(",") if origin.strip()]
+    typer.secho(f"cors_origin_list: {config.cors_origin_list}", fg=typer.colors.MAGENTA)
 
     # Time zone
     time_zone = typer.prompt(typer.style("Time zone (time_zone)", fg=typer.colors.CYAN), default=config.time_zone)
@@ -76,5 +73,14 @@ def serve(host: str = "0.0.0.0", port: int = 7777) -> None:
     init()
     # Import after init() so configuration is loaded when the agent starts.
     from openfox.agent import OpenFoxAgent
+
     openfox_agent = OpenFoxAgent()
-    uvicorn.run(openfox_agent.app, host=host, port=port)
+    if port != 7777:
+        cfg_path = ConfigTools().get_path()
+        typer.secho(
+            f"Port is {port} (not 7777): add the /web origin to `cors_origin_list` in {cfg_path} "
+            f"(e.g. http://127.0.0.1:{port}, http://localhost:{port}) or the embedded web UI may fail CORS.",
+            fg=typer.colors.YELLOW,
+        )
+    uvicorn_config = uvicorn.Config(openfox_agent.app, host=host, port=port)
+    run_uvicorn_with_web_banner(uvicorn_config)

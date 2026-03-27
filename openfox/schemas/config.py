@@ -1,7 +1,15 @@
-from pydantic import Field
-from pydantic_settings import BaseSettings
+import ast
+import json
 from typing import List
 
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings
+
+# Origins for the bundled ``/web`` UI on the default ``openfox serve`` port (CORS preflight).
+OPENFOX_EMBEDDED_WEB_CORS_ORIGINS: tuple[str, ...] = (
+    "http://127.0.0.1:7777",
+    "http://localhost:7777",
+)
 
 class FeishuConfig(BaseSettings):
     """Feishu (Lark) channel settings."""
@@ -46,10 +54,11 @@ class Config(BaseSettings):
     docs_enabled: bool = Field(default=True, description="Enable API docs")
     authorization_enabled: bool = Field(default=True, description="Enable authorization")
     os_security_key: str = Field(default="", description="AgentOS security key")
-    cors_origin_list: List[str] = Field(default_factory=list, description="Allowed CORS origins")
+    cors_origin_list: List[str] = Field(
+        default_factory=lambda: list(OPENFOX_EMBEDDED_WEB_CORS_ORIGINS),
+        description="Allowed CORS origins (default includes embedded /web on port 7777)",
+    )
     time_zone: str = Field(default="Asia/Shanghai", description="Default timezone")
-    db_url: str = Field(default="mongodb://test:test@127.0.0.1:27017", description="MongoDB connection URL")
-    db_name: str = Field(default="openfox", description="MongoDB database name")
     llm: LLMConfig = Field(default_factory=LLMConfig, description="LLM settings")
     channels: ChannelsConfig = Field(default_factory=ChannelsConfig, description="Channel integrations")
     mcps: List[MCPServerConfig] = Field(default_factory=list, description="MCP server connections")

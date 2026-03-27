@@ -1,133 +1,166 @@
-<div align="center"><h1>🦊 OpenFox — 个人人工智能助手</h1></div>
+<p align="center">
+  <img src="./assets/openfox-logo.png" alt="OpenFox logo" width="128" height="128" />
+</p>
 
-<div align="center">
+<h1 align="center">OpenFox</h1>
 
-自托管轻量 AI 助手，多工具与飞书通道支持
+<p align="center">
+  <strong>自托管个人 AI 助手</strong><br />
+  Agno AgentOS · 飞书通道 · 内置 Web 控制台 · LiteLLM 多模型
+</p>
 
-[![python](https://img.shields.io/badge/python-3.12.x-blue.svg?style=flat-square)](https://docs.python.org/3.12/index.html)
-[![agno](https://img.shields.io/badge/agno-orange.svg?style=flat-square)](https://github.com/agno-agi/agno.git)
-[![mongodb](https://img.shields.io/badge/mongodb-8-brightgreen.svg?style=flat-square)](https://github.com/mongodb/mongo.git)
-
-</div>
-
-
-**OpenFox** 是一款运行在您自己的设备上的**个人 AI 助手**。通过飞书等通道与它对话，它可以使用定时任务、股票行情、Shell、MCP 工具和本地技能来帮你完成任务。网关即控制面，产品即助手。
-如果你想要一个**自托管、单用户、本地优先**的 AI 助手，就是它。
-
----
-
-> 你的加🌟是我更新的动力
-
-## 功能亮点
-
-- **本地优先网关** — 单控制面：会话、通道、工具与定时任务统一管理。
-- **飞书通道** — 在飞书中与助手对话，支持单聊与群聊（可扩展更多通道）。
-- **定时任务（Cron）** — 用自然语言创建周期任务（如「每天早上 9 点发日报」），到点自动回调 Agent。
-- **丰富工具** — Shell 执行、AkShare 股票行情、MCP 工具集、配置读写；技能文档中的 CLI 示例可由 Agent 调用执行。
-- **技能与 MCP** — 本地 Skills（`openfox/skills`）+ 可配置 MCP server（stdio/HTTP），按需扩展能力。
-- **配置即服务** — 配置文件 `~/.openfox/config.json`，支持通过 Agent 的 config 工具在对话中查看与修改。
+<p align="center">
+  <a href="https://docs.python.org/3.12/"><img src="https://img.shields.io/badge/python-3.12+-blue.svg?style=flat-square" alt="Python" /></a>
+  <a href="https://github.com/agno-agi/agno"><img src="https://img.shields.io/badge/framework-agno-orange.svg?style=flat-square" alt="Agno" /></a>
+  <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/API-FastAPI-009688.svg?style=flat-square" alt="FastAPI" /></a>
+</p>
 
 ---
 
+## 它是什么
 
-## 快速开始（TL;DR）
+**OpenFox** 跑在你自己的机器上：一个 **FastAPI + [Agno](https://github.com/agno-agi/agno) AgentOS** 网关，把 **大模型对话、定时任务、飞书机器人、浏览器工具、MCP、本地技能** 收拢到同一套 HTTP 服务里。默认带 **嵌入式 Web UI**（`/web`），也可在飞书中与助手对话。
 
-**首次运行会自动生成默认配置**（`~/.openfox/config.json`），无需手动创建。
+| 路径 | 说明 |
+|------|------|
+| `~/.openfox/config.json` | LLM、飞书、`cors_origin_list`、MCP 等配置 |
+| `~/.openfox/storage.db` | Agno 使用的 **SQLite** 会话与调度存储 |
+
+---
+
+## 功能一览
+
+| 能力 | 说明 |
+|------|------|
+| **Web 控制台** | 聊天、会话列表、用量指标、技能上传/管理、Cron 调度、JSON 配置编辑（需登录，使用配置里的 `os_security_key`） |
+| **飞书** | 事件与消息接入，单聊/群聊（可 @ 机器人） |
+| **定时任务** | 内置调度器；对话里可用自然语言创建周期任务（CronTools），回调 Agent 指定端点 |
+| **工具** | `run_shell`（Shell）、**Playwright 浏览器工具**（BrowserTools）、飞书发消息等（FeishuTools）、**MCP**（`config.mcps` 配置）、对话中维护 MCP 声明（MCPConfigTools）、config 读写（ConfigTools） |
+| **技能** | `openfox/skills` 下 `SKILL.md`（LocalSkills）；Web 端支持上传技能包 |
+| **模型** | 通过 **LiteLLM** 对接 OpenAI 兼容 API（详见下文「模型」） |
+
+---
+
+## 快速开始
+
+**环境**：Python **3.12+**，建议用 [uv](https://github.com/astral-sh/uv) 安装依赖后进入项目根目录。
 
 ```bash
-# 启动 HTTP 服务（默认端口 7777）
-python -m openfox
-
-🦊 初始化 OpenFox 配置
-是否启用文档 (docs_enabled) [True]: 
-是否启用授权 (authorization_enabled) [True]:
-生成 token: 7a151a32b18b95735c327e82bf23ad49 
-CORS 允许的源列表 (cors_origin_list, 用逗号分隔, 默认 * 表示所有源) [['*']]:
-时区 (time_zone) [Asia/Shanghai]: 
-
-配置 LLM：
-LLM 模型名称 (llm.model_name) [deepseek/deepseek-chat]: 
-LLM API Base URL (llm.api_base) [https://api.deepseek.com]: 
-LLM API Key (llm.api_key): 你的 Key
-
-配置飞书通道：
-飞书 App ID (channels.feishu.app_id): 你的 App ID 
-飞书 App Secret (channels.feishu.app_secret): 你的 App Secret
-飞书 Encrypt Key (channels.feishu.encrypt_key): 你的 Encrypt Key
-飞书 Verification Token (channels.feishu.verification_token): 你的 Verification Token
-配置文件已保存到：/Users/kylin/.openfox/config.json
+uv sync   # 或 pip install -e .
 ```
 
-服务启动后：
+**首次启动**：若没有 `~/.openfox/config.json`，会先走一轮交互式初始化（API 文档开关、鉴权、`os_security_key`、时区、LLM、飞书等），然后启动服务。
 
-- **飞书**：在飞书开放平台配置事件订阅与消息回调，指向该服务的飞书接口地址即可与助手对话。
-- **定时任务**：在对话中说「每 5 分钟提醒我喝水」等，Agent 会通过 Cron 工具创建周期任务。
-
-升级或排查问题时，可检查 `~/.openfox/config.json` 与 MongoDB 连接、LLM API 配置是否正确。
-
----
-
-## 支持模型
-
-- [LiteLLM 支持的所有 OpenAI-compatible 提供商与模型](https://docs.litellm.ai/docs/providers)，只要走 OpenAI Chat Completions 接口基本都能用。
-
-```text
-示例模型（仅示例，完整列表见上方链接）：
-- openai/gpt-4.1-mini
-- openai/gpt-4.1
-- openai/gpt-4.1-preview
-- openai/gpt-4o-mini
-- openai/gpt-4o
-- dashscope/qwen-max
-- deepseek/deepseek-chat
-- moonshot/moonshot-v1-32k
-- ollama/llama3.1
-- openrouter/meta-llama/Meta-Llama-3.1-70B-Instruct
+```bash
+python -m openfox serve
+# 默认监听 0.0.0.0:7777
 ```
+
+常用参数：
+
+```bash
+python -m openfox serve --host 0.0.0.0 --port 7777
+```
+
+- **Web UI**：浏览器打开 `http://127.0.0.1:7777/web`（端口按实际修改）。
+- **鉴权 Token**：即配置中的 `os_security_key`，在 Web 登录页填入。
+- **非 7777 端口**：默认 CORS 预置了 `:7777` 的 `/web` 来源；若改端口，请在 `cors_origin_list` 中加入例如 `http://127.0.0.1:<端口>` 与 `http://localhost:<端口>`，否则前端可能无法访问 API。
+
+仅想重新初始化时，可删除 `~/.openfox/config.json` 后再次执行 `serve`（会再次跑向导）。已有配置时，`serve` 会跳过向导直接启动。
+
 ---
-
-## 效果
-
-![feishu](./assets/feishu.gif)
-
----
-
-## 内网穿透工具
-
-- [zeronews](https://user.zeronews.cc/setup/start)
 
 ## 飞书接入
 
-- webhook url http//:你的ip地址/feishu/event
+请求根路径前缀为 **`/feishu`**（与 AgentOS 挂载方式一致）。
+
+- 事件 / Webhook 示例：`http://<你的主机或域名>/feishu/event`（以开放平台实际要求的路径为准，需与路由配置一致）。
+
+步骤摘要：
 
 1. 在 [飞书开放平台](https://open.feishu.cn/) 创建应用，获取 **App ID**、**App Secret**。
-2. 开启「事件订阅」与「消息与群组」等权限，配置请求地址：`https://你的域名/openfox/feishu`（或内网穿透地址），并填写 **Encrypt Key**、**Verification Token**。
-3. 将上述信息写入 `~/.openfox/config.json` 的 `channels.feishu`，重启 `openfox serve`。
-4. 在飞书中拉群或单聊，@ 机器人或私聊即可与 OpenFox 助手对话。
+2. 配置事件订阅与消息权限，请求 URL 指向你的服务（公网或内网穿透），填写 **Encrypt Key**、**Verification Token**。
+3. 将上述信息写入 `~/.openfox/config.json` 的 `channels.feishu`，重启 `python -m openfox serve`。
+4. 在飞书单聊或群聊中使用应用能力（如 @ 机器人）与 OpenFox 对话。
 
 ---
 
-## 技能与工作区
+## 模型（LiteLLM）
 
-- **技能目录**：`openfox/skills/`，每个子目录可包含 `SKILL.md`，由 Agno 的 `LocalSkills` 自动加载。
-- **MCP 工具**：在配置的 `mcps` 中声明 MCP server（stdio 或 HTTP），Agent 即可在对话中按需调用。
+OpenFox 使用 **LiteLLM** 调用模型，只要在 [LiteLLM 支持的提供商](https://docs.litellm.ai/docs/providers) 范围内、走 OpenAI Chat Completions 风格接口，一般只需改 `llm.model_name` / `llm.api_base` / `llm.api_key`。
 
----
+示例型号（完整列表见官方文档）：
 
-## 与 OpenClaw 的对比
-
-| 维度       | OpenClaw              | OpenFox                    |
-|------------|------------------------|----------------------------|
-| 技术栈     | Node/TypeScript        | Python + Agno + FastAPI    |
-| 通道       | WhatsApp/Telegram/Slack/飞书等 20+ | 飞书（可扩展）             |
-| 工具/扩展  | 内置浏览器、Canvas、Cron 等 | Cron、Shell、AkShare、MCP、Skills |
-| 定位       | 全平台个人助手         | 自托管、中文场景、轻量中控 |
+```text
+openai/gpt-4o-mini
+deepseek/deepseek-chat
+dashscope/qwen-max
+ollama/llama3.1
+...
+```
 
 ---
 
+## 界面预览
 
-## 加群
+### 飞书中使用效果
 
-- 加群请注明来意: 留言 openfox
+![feishu](./assets/feishu.gif)
 
-<img src="assets/kylin.png" width="220" alt="220" />
+### Web UI
+
+<p align="center"><strong>聊天</strong></p>
+<p align="center"><img src="./assets/image1.png" alt="OpenFox Web — 聊天" width="900" /></p>
+
+<p align="center"><strong>会话</strong></p>
+<p align="center"><img src="./assets/image2.png" alt="OpenFox Web — 会话" width="900" /></p>
+
+<p align="center"><strong>使用情况</strong></p>
+<p align="center"><img src="./assets/image3.png" alt="OpenFox Web — 使用情况" width="900" /></p>
+
+<p align="center"><strong>技能</strong></p>
+<p align="center"><img src="./assets/image4.png" alt="OpenFox Web — 技能" width="900" /></p>
+
+<p align="center"><strong>定时任务</strong></p>
+<p align="center"><img src="./assets/image5.png" alt="OpenFox Web — 定时任务" width="900" /></p>
+
+<p align="center"><strong>配置</strong></p>
+<p align="center"><img src="./assets/image6.png" alt="OpenFox Web — 配置" width="900" /></p>
+
+---
+
+## 内网穿透（可选）
+
+- [zeronews](https://user.zeronews.cc/setup/start)
+
+---
+
+## 技能与 MCP
+
+- **技能目录**：默认 `openfox/skills/`，子目录内 `SKILL.md` 由 Agno `LocalSkills` 加载；Agent 指令中说明：若技能文档提供 CLI 示例，应通过 `run_shell` 执行。
+- **MCP**：在 `config.json` 的 `mcps` 数组中配置 stdio 或 HTTP MCP；也可在对话里用 **MCP 配置工具** 维护。
+
+---
+
+## 与 OpenClaw 的简单对比
+
+| 维度 | OpenClaw | OpenFox |
+|------|----------|---------|
+| 技术栈 | Node / TypeScript | Python、Agno、FastAPI |
+| 通道 | 多平台即时通讯 | 飞书为主（可扩展） |
+| 扩展 | 浏览器、Canvas、Cron 等 | Cron、Shell、浏览器（Playwright）、MCP、本地 Skills |
+| 定位 | 全平台个人助手 | 自托管、中文场景、轻量中控与 Web 一体 |
+
+---
+
+## 致谢与支持
+
+> 你的加 Star 是我们持续改进的动力。
+
+### 交流群
+
+加群请注明来意，留言 **openfox**：
+
+<p align="center">
+  <img src="./assets/kylin.png" width="220" alt="交流群二维码" />
+</p>

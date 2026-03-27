@@ -1,5 +1,6 @@
 from pathlib import Path
-from typing import  List
+from typing import List
+
 from agno.agent import Agent
 from agno.db.sqlite import AsyncSqliteDb
 from agno.models.litellm import LiteLLM
@@ -17,7 +18,9 @@ from openfox.tools.shell import run_shell
 from openfox.utils.mcps import build_mcps
 from openfox.utils.notify import send_notification
 from openfox.tools.browser import BrowserTools
-
+from openfox.routers import config
+from openfox.routers import skills
+from openfox.utils.web_static import install_web_routes
 
 # Work around agno ScheduleManager: on interpreter exit, __del__ may run without `_pool` set.
 ScheduleManager.close = lambda self: (getattr(self, "_pool", None) and (self._pool.shutdown(wait=False), setattr(self, "_pool", None)))
@@ -52,7 +55,10 @@ class OpenFoxAgent:
 
         tools_list: List[Toolkit] = [
             run_shell,
-            CronTools(endpoint=f"/agents/{self.config.agent_id}/runs", schedule_mgr=self.schedule_mgr),
+            CronTools(
+                endpoint=f"/agents/{self.config.agent_id}/runs",
+                schedule_mgr=self.schedule_mgr,
+            ),
             BrowserTools(),
             self.feishu_tools,
             self.mcp_config_tools,
@@ -77,7 +83,7 @@ class OpenFoxAgent:
             os_security_key=self.config.os_security_key,
             docs_enabled=self.config.docs_enabled,
             authorization_enabled=self.config.authorization_enabled,
-            cors_origin_list=self.config.cors_origin_list if self.config.cors_origin_list else None,
+            cors_origin_list=self.config.cors_origin_list,
         )
 
         self.os = AgentOS(
@@ -90,3 +96,6 @@ class OpenFoxAgent:
             settings=settings,
         )
         self.app = self.os.get_app()
+        self.app.include_router(config.get_router(self.config_tools, settings))
+        self.app.include_router(skills.get_router(self.config_tools, settings))
+        install_web_routes(self.app)

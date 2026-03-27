@@ -16,6 +16,7 @@ dependencies = [
     "litellm>=1.82.6",
     "mcp>=1.26.0",
     "playwright>=1.58.0",
+    "pyyaml>=6.0.2",
     "sqlalchemy>=2.0.48",
     "typer>=0.24.1",
     "websockets>=12",
