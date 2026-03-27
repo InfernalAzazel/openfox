@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/openfox-logo.png" alt="OpenFox logo" width="128" height="128" />
+  <img src="./assets/openfox-logo.png" alt="OpenFox logo" width="64" height="64" />
 </p>
 
 <h1 align="center">OpenFox</h1>
