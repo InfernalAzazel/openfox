@@ -2,7 +2,7 @@
   <img src="./assets/openfox-logo.png" alt="OpenFox logo" width="64" height="64" />
 </p>
 
-<h1 align="center">OpenFox</h1>
+<h3 align="center">OpenFox</h1>
 
 <p align="center">
   <strong>自托管个人 AI 助手</strong><br />
