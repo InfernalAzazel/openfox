@@ -37,9 +37,31 @@
 | **Web console** | Chat, session list, usage metrics, skill upload/management, Cron scheduling, JSON config editor (login required; use `os_security_key` from config) |
 | **Feishu** | Event and message intake; DM and group chat (mention the bot) |
 | **Scheduled jobs** | Built-in scheduler; create recurring tasks in natural language (CronTools) with callbacks to Agent endpoints |
-| **Tools** | `run_shell` (Shell), **Playwright browser** (BrowserTools), Feishu messaging (FeishuTools), **MCP** (`config.mcps`), MCP declarations in chat (MCPConfigTools), config read/write (ConfigTools) |
+| **Tools** | See “Built-in Agent tools” below; you can also attach **MCP** via `config.mcps`. JSON config editing in the Web console uses **ConfigTools** (not an Agent chat tool). |
 | **Skills** | `SKILL.md` under `openfox/skills` (LocalSkills); upload skill packs from the Web UI |
 | **Models** | **LiteLLM** for OpenAI-compatible APIs (see “Models” below) |
+
+---
+
+## Built-in Agent tools
+
+| Tool class | What it does |
+|------------|----------------|
+| **ShellTools** | Run shell commands on the host where OpenFox runs (Agno) |
+| **CronTools** | Create / list scheduled jobs; Cron expressions invoke this Agent's run endpoint |
+| **BrowserTools** | Local Chromium **remote debugging (CDP)**: launch or reuse the browser, health checks, get DevTools WebSocket, stop the process—for automation / Playwright, etc. |
+| **FeishuTools** | Feishu-related actions (e.g. messaging with the channel) |
+| **MCPConfigTools** | Add / remove / update MCP-related config in chat to extend tools dynamically |
+| **WebSearchTools** | Search the web |
+| **ArxivTools** | Search [arXiv](https://arxiv.org/) papers and metadata |
+| **HackerNewsTools** | Read Hacker News stories and discussions |
+| **PubmedTools** | Search [PubMed](https://pubmed.ncbi.nlm.nih.gov/) biomedical literature |
+| **WikipediaTools** | Look up Wikipedia articles and summaries |
+| **Crawl4aiTools** | Fetch and parse page content with Crawl4AI (suited to structured extraction) |
+| **CalculatorTools** | Evaluate math expressions |
+| **DockerTools** | Manage local Docker: containers, images, volumes, networks (Docker must be available) |
+| **YouTubeTools** | YouTube: metadata, captions, timestamps, etc. (requires `youtube_transcript_api`) |
+| **WebBrowserTools** | Open a URL in the **system default browser** on this machine (new tab or new window) |
 
 ---
 

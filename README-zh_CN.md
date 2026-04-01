@@ -37,9 +37,31 @@
 | **Web 控制台** | 聊天、会话列表、用量指标、技能上传/管理、Cron 调度、JSON 配置编辑（需登录，使用配置里的 `os_security_key`） |
 | **飞书** | 事件与消息接入，单聊/群聊（可 @ 机器人） |
 | **定时任务** | 内置调度器；对话里可用自然语言创建周期任务（CronTools），回调 Agent 指定端点 |
-| **工具** | `run_shell`（Shell）、**Playwright 浏览器工具**（BrowserTools）、飞书发消息等（FeishuTools）、**MCP**（`config.mcps` 配置）、对话中维护 MCP 声明（MCPConfigTools）、config 读写（ConfigTools） |
+| **工具** | 见下文「内置 Agent 工具」；另可通过 `config.mcps` 挂载 **MCP**，Web 控制台中的配置编辑对应 **ConfigTools**（非 Agent 对话工具） |
 | **技能** | `openfox/skills` 下 `SKILL.md`（LocalSkills）；Web 端支持上传技能包 |
 | **模型** | 通过 **LiteLLM** 对接 OpenAI 兼容 API（详见下文「模型」） |
+
+---
+
+## 内置 Agent 工具
+
+| 工具类 | 作用 |
+|--------|------|
+| **ShellTools** | 在运行 OpenFox 的机器上执行 Shell 命令（Agno） |
+| **CronTools** | 创建 / 列出定时任务，按 Cron 表达式回调本 Agent 的运行端点 |
+| **BrowserTools** | 本地 Chromium **远程调试（CDP）**：启动或复用浏览器、健康检查、获取 DevTools WebSocket、关闭进程，供自动化/Playwright 等使用 |
+| **FeishuTools** | 飞书相关能力（如发消息等与通道联动） |
+| **MCPConfigTools** | 在对话中增删改 MCP 相关配置声明，便于动态扩展工具 |
+| **WebSearchTools** | 联网搜索网页信息 |
+| **ArxivTools** | 检索 [arXiv](https://arxiv.org/) 论文与元数据 |
+| **HackerNewsTools** | 读取 Hacker News 条目与讨论 |
+| **PubmedTools** | 检索 [PubMed](https://pubmed.ncbi.nlm.nih.gov/) 生物医学文献 |
+| **WikipediaTools** | 查询维基百科条目与摘要 |
+| **Crawl4aiTools** | 使用 Crawl4AI 抓取并解析网页正文（适于需结构化抽取的场景） |
+| **CalculatorTools** | 数学表达式计算 |
+| **DockerTools** | 管理本机 Docker：容器、镜像、数据卷、网络（需 Docker 可用） |
+| **YouTubeTools** | YouTube：获取视频元数据、字幕、时间戳等（依赖 `youtube_transcript_api`） |
+| **WebBrowserTools** | 调用**系统默认浏览器**在本机打开指定 URL（新标签或新窗口） |
 
 ---
 

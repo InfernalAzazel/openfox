@@ -21,6 +21,17 @@ from openfox.tools.browser import BrowserTools
 from openfox.routers import config
 from openfox.routers import skills
 from openfox.utils.web_static import install_web_routes
+from agno.tools.websearch import WebSearchTools
+from agno.tools.arxiv import ArxivTools
+from agno.tools.hackernews import HackerNewsTools
+from agno.tools.pubmed import PubmedTools
+from agno.tools.wikipedia import WikipediaTools
+from agno.tools.crawl4ai import Crawl4aiTools
+from agno.tools.calculator import CalculatorTools
+from agno.tools.docker import DockerTools
+from agno.tools.shell import ShellTools
+from agno.tools.youtube import YouTubeTools
+from agno.tools.webbrowser import WebBrowserTools
 
 # Work around agno ScheduleManager: on interpreter exit, __del__ may run without `_pool` set.
 ScheduleManager.close = lambda self: (getattr(self, "_pool", None) and (self._pool.shutdown(wait=False), setattr(self, "_pool", None)))
@@ -54,7 +65,7 @@ class OpenFoxAgent:
         mcps = build_mcps(self.config)
 
         tools_list: List[Toolkit] = [
-            run_shell,
+            ShellTools(),
             CronTools(
                 endpoint=f"/agents/{self.config.agent_id}/runs",
                 schedule_mgr=self.schedule_mgr,
@@ -62,6 +73,16 @@ class OpenFoxAgent:
             BrowserTools(),
             self.feishu_tools,
             self.mcp_config_tools,
+            WebSearchTools(),
+            ArxivTools(),
+            HackerNewsTools(),
+            PubmedTools(),
+            WikipediaTools(),
+            Crawl4aiTools(),
+            CalculatorTools(),
+            DockerTools(),
+            YouTubeTools(),
+            WebBrowserTools(),
         ]
         if mcps is not None:
             tools_list.append(mcps)
