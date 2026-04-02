@@ -67,6 +67,10 @@ const loadingHistory = ref(false)
 const sending = ref(false)
 /** 切换会话时的并发请求序号，避免慢请求覆盖新会话内容 */
 let sessionHistoryRequestId = 0
+/**
+ * 从「无会话」首次绑定 run 返回的 session_id 时跳过一次历史拉取，避免清空后用尚未含 tool_calls 的 GET 覆盖本地消息。
+ */
+let skipSessionHistoryLoadOnce = false
 /** Agent 逐字输出：取消时补全全文 */
 let cancelAgentTypewriter: (() => void) | null = null
 
@@ -262,16 +266,20 @@ async function sendMessage() {
     )
     const { text: reply, sessionId: returnedSid, toolCalls } =
       parseAgentRunResult(raw)
-    if (returnedSid) {
-      sessionChoice.value = returnedSid
-    }
     const content =
       reply || (!toolCalls?.length ? t("chat.emptyReply") : "")
     const createdAt = nowTs()
+    /** 必须先插入带 tool_calls 的消息，再更新 sessionChoice，否则 watcher 会清空列表并用不完整的历史覆盖 */
     messages.value.push(
       agentReplyToChatMessage("", toolCalls, createdAt),
     )
     const idx = messages.value.length - 1
+    if (returnedSid) {
+      if (!sessionChoice.value.trim()) {
+        skipSessionHistoryLoadOnce = true
+      }
+      sessionChoice.value = returnedSid
+    }
     if (!content) {
       await refreshSessions()
     } else {
@@ -302,14 +310,6 @@ async function sendMessage() {
     })
   } finally {
     sending.value = false
-  }
-}
-
-function onDraftKeydown(e: KeyboardEvent) {
-  if (e.key === "Enter" && !e.shiftKey) {
-    e.preventDefault()
-    if (!draft.value.trim()) return
-    void sendMessage()
   }
 }
 
@@ -355,6 +355,12 @@ watch(sessionChoice, async (sid) => {
     cancelAgentTypewriter?.()
     cancelAgentTypewriter = null
     messages.value = []
+    return
+  }
+
+  if (skipSessionHistoryLoadOnce) {
+    skipSessionHistoryLoadOnce = false
+    void refreshSessions()
     return
   }
 
@@ -624,7 +630,6 @@ function downloadCurrentChatMarkdown() {
               v-model="draft"
               :placeholder="t('chat.messagePlaceholder')"
               class="min-h-[80px] resize-none rounded-lg border-0 bg-transparent px-3 py-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-0"
-              @keydown="onDraftKeydown"
             />
             <div class="flex items-center justify-end gap-0.5 px-2 pb-1 pt-0.5">
                 <Tooltip>

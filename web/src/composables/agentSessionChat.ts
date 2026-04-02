@@ -4,6 +4,23 @@
 import type { AssistantToolCallTag, SessionChatLine } from '@/types/chat'
 import type { ModelMessage } from '@/types/os'
 
+function toolCallsFromAssistantMessages(
+  msgList: unknown,
+  pickSession: (o: object) => void,
+): AssistantToolCallTag[] | undefined {
+  if (!Array.isArray(msgList) || msgList.length === 0) return undefined
+  let out: AssistantToolCallTag[] | undefined
+  for (const item of msgList) {
+    if (item === null || typeof item !== 'object') continue
+    pickSession(item)
+    const row = item as Record<string, unknown>
+    if (row.role !== 'assistant') continue
+    const tc = parseToolCallsFromRow(row)
+    if (tc?.length) out = tc
+  }
+  return out
+}
+
 function parseToolCallsFromRow(
   row: Record<string, unknown>,
 ): AssistantToolCallTag[] | undefined {
@@ -66,7 +83,10 @@ export function parseAgentRunResult(raw: unknown): {
     const o = raw as Record<string, unknown>
     const toolCallsFromRoot = parseToolCallsFromRow(o)
     if (typeof o.content === 'string') {
-      return { text: o.content, sessionId, toolCalls: toolCallsFromRoot }
+      const fromMessages = toolCallsFromAssistantMessages(o.messages, pickSession)
+      const toolCalls =
+        toolCallsFromRoot?.length ? toolCallsFromRoot : fromMessages
+      return { text: o.content, sessionId, toolCalls }
     }
     if (typeof o.content === 'number' || typeof o.content === 'boolean') {
       return { text: String(o.content), sessionId, toolCalls: toolCallsFromRoot }
@@ -84,6 +104,26 @@ export function parseAgentRunResult(raw: unknown): {
           sessionId,
           toolCalls: toolCallsFromRoot,
         }
+      }
+    }
+    /** Run 接口常见：`messages` 中为 OpenAI 形态 assistant 行，正文/tool_calls 仅在数组内 */
+    const msgList = o.messages
+    if (Array.isArray(msgList) && msgList.length) {
+      const parts: string[] = []
+      for (const item of msgList) {
+        if (item === null || typeof item !== 'object') continue
+        pickSession(item)
+        const row = item as Record<string, unknown>
+        if (row.role !== 'assistant') continue
+        const c = row.content
+        if (typeof c === 'string' && c.trim()) parts.push(c.trim())
+      }
+      const text = parts.join('\n\n')
+      const toolCalls =
+        toolCallsFromAssistantMessages(msgList, pickSession) ??
+        toolCallsFromRoot
+      if (text || toolCalls?.length) {
+        return { text, sessionId, toolCalls }
       }
     }
     if (Array.isArray(raw)) {

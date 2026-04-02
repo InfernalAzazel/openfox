@@ -64,7 +64,7 @@ export default {
     loadingHistory: "Loading conversation history…",
     replying: "Replying…",
     messagePlaceholder:
-      "Type a message (Enter to send, Shift+Enter for newline)",
+      "Type a message (Enter for newline, use the send button to submit)",
     downloadChatAria: "Download current session as Markdown",
     downloadChatTooltip: "Download chat log (.md)",
     send: "Send",

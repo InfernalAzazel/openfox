@@ -61,7 +61,7 @@ export default {
     refreshMeta: "刷新 Agent 与会话",
     loadingHistory: "正在加载会话历史…",
     replying: "正在回复…",
-    messagePlaceholder: "输入消息（Enter 发送，Shift+Enter 换行）",
+    messagePlaceholder: "输入消息（Enter 换行，点击按钮发送）",
     downloadChatAria: "下载当前会话为 Markdown",
     downloadChatTooltip: "下载聊天记录（.md）",
     send: "发送",
