@@ -29,12 +29,7 @@ def init():
     docs_enabled = typer.prompt(typer.style("Enable API docs? (docs_enabled)", fg=typer.colors.CYAN), default=config.docs_enabled)
     config.docs_enabled = docs_enabled
     typer.secho(f"docs_enabled: {docs_enabled}", fg=typer.colors.MAGENTA)
-
-    # Authorization
-    authorization_enabled = typer.prompt(typer.style("Enable authorization? (authorization_enabled)", fg=typer.colors.CYAN), default=config.authorization_enabled)
-    config.authorization_enabled = authorization_enabled
-    typer.secho(f"authorization_enabled: {authorization_enabled}", fg=typer.colors.MAGENTA)
-
+    
     # os_security_key
     os_security_key = secrets.token_hex(16)
     config.os_security_key = os_security_key

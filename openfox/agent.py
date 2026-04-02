@@ -100,10 +100,10 @@ class OpenFoxAgent:
             markdown=True,
             post_hooks=[send_notification],
         )
+        
         settings = AgnoAPISettings(
             os_security_key=self.config.os_security_key,
             docs_enabled=self.config.docs_enabled,
-            authorization_enabled=self.config.authorization_enabled,
             cors_origin_list=self.config.cors_origin_list,
         )
 

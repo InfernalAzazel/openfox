@@ -1,11 +1,9 @@
 """HTTP API for OpenFox ``~/.openfox/config.json`` (extension to Agno, not core OS)."""
 
 from __future__ import annotations
-
 from agno.os.settings import AgnoAPISettings
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
-
 from openfox.schemas.config import Config
 from openfox.tools.config import ConfigTools
 

@@ -52,7 +52,6 @@ class Config(BaseSettings):
     agent_id: str = Field(default="OpenFox", description="Agent ID")
     skills_path: str = Field(default="openfox/skills", description="Skills directory path")
     docs_enabled: bool = Field(default=True, description="Enable API docs")
-    authorization_enabled: bool = Field(default=True, description="Enable authorization")
     os_security_key: str = Field(default="", description="AgentOS security key")
     cors_origin_list: List[str] = Field(
         default_factory=lambda: list(OPENFOX_EMBEDDED_WEB_CORS_ORIGINS),
