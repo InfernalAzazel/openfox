@@ -7,10 +7,16 @@ import tempfile
 from pathlib import Path
 from typing import NoReturn
 
+from agno.agent import Agent
 from agno.os.settings import AgnoAPISettings
+from agno.skills import Skills
+
+from openfox.utils.const import SKILLS_PATH
+from openfox.utils.skills import LocalSkills
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 
+from openfox.schemas.skill import SkillActivate
 from openfox.services.skills import (
     MAX_SKILL_ZIP_BYTES,
     SkillExistsError,
@@ -20,10 +26,8 @@ from openfox.services.skills import (
     install_skill_from_zip,
     list_installed_skills,
     replace_skill_from_zip,
+    set_skill_activate,
 )
-from openfox.tools.config import ConfigTools
-
-
 def _ensure_zip_upload(file: UploadFile) -> None:
     """Reject non-ZIP uploads (415)."""
     name = (file.filename or "").lower()
@@ -66,7 +70,7 @@ def _raise_http_for_skill_error(exc: SkillPackageError) -> NoReturn:
 
 
 def get_router(
-    tools: ConfigTools,
+    agent: Agent,
     settings: AgnoAPISettings,
 ) -> APIRouter:
     from agno.os.auth import get_authentication_dependency
@@ -76,9 +80,9 @@ def get_router(
 
     @router.get("/expand/skills")
     async def list_skills(_auth: bool = Depends(auth_dep)) -> JSONResponse:
-        """Return installed skills under the configured skills path."""
-        config = tools.load()
-        items = list_installed_skills(config)
+        """Return installed skills under ``SKILLS_PATH``."""
+        items = list_installed_skills()
+        agent.skills = Skills(loaders=[LocalSkills(str(SKILLS_PATH))])
         return JSONResponse(
             status_code=200,
             content=[item.model_dump() for item in items],
@@ -93,11 +97,12 @@ def get_router(
         tmp = await _persist_uploaded_zip(file)
         try:
             try:
-                info = install_skill_from_zip(tmp, tools.load())
+                info = install_skill_from_zip(tmp)
             except SkillPackageError as e:
                 _raise_http_for_skill_error(e)
         finally:
             tmp.unlink(missing_ok=True)
+        agent.skills = Skills(loaders=[LocalSkills(str(SKILLS_PATH))])
         return JSONResponse(status_code=201, content=info.model_dump())
 
     @router.put("/expand/skills/{name}")
@@ -110,11 +115,25 @@ def get_router(
         tmp = await _persist_uploaded_zip(file)
         try:
             try:
-                info = replace_skill_from_zip(tmp, name, tools.load())
+                info = replace_skill_from_zip(tmp, name)
             except SkillPackageError as e:
                 _raise_http_for_skill_error(e)
         finally:
             tmp.unlink(missing_ok=True)
+        return JSONResponse(status_code=200, content=info.model_dump())
+
+    @router.patch("/expand/skills/activate/{name}")
+    async def set_activate_skill(
+        name: str,
+        body: SkillActivate,
+        _auth: bool = Depends(auth_dep),
+    ) -> JSONResponse:
+        """Enable/disable whether the agent loads this skill (append/remove trailing ``-`` on folder name)."""
+        try:
+            info = set_skill_activate(name, body.activate)
+        except SkillPackageError as e:
+            _raise_http_for_skill_error(e)
+        agent.skills = Skills(loaders=[LocalSkills(str(SKILLS_PATH))])
         return JSONResponse(status_code=200, content=info.model_dump())
 
     @router.delete("/expand/skills/{name}")
@@ -124,9 +143,10 @@ def get_router(
     ) -> JSONResponse:
         """Remove an installed skill directory by name."""
         try:
-            delete_skill(name, tools.load())
+            delete_skill(name)
         except SkillPackageError as e:
             _raise_http_for_skill_error(e)
+        agent.skills = Skills(loaders=[LocalSkills(str(SKILLS_PATH))])
         return JSONResponse(status_code=200, content={"ok": True, "name": name})
 
     return router

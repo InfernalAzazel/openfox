@@ -3,7 +3,7 @@ import json
 from typing import List
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Origins for the bundled ``/web`` UI on the default ``openfox serve`` port (CORS preflight).
 OPENFOX_EMBEDDED_WEB_CORS_ORIGINS: tuple[str, ...] = (
@@ -50,7 +50,6 @@ class Config(BaseSettings):
     """Application configuration."""
 
     agent_id: str = Field(default="OpenFox", description="Agent ID")
-    skills_path: str = Field(default="openfox/skills", description="Skills directory path")
     docs_enabled: bool = Field(default=True, description="Enable API docs")
     os_security_key: str = Field(default="", description="AgentOS security key")
     cors_origin_list: List[str] = Field(

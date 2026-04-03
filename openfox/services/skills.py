@@ -1,6 +1,6 @@
 """Agno LocalSkills package handling: validate layouts, list installs, zip → folder + SKILL.md.
 
-Layout rules match ``agno.skills.validator`` and ``LocalSkills``, aligned with runtime
+Layout rules match ``agno.skills.validator`` and OpenFox ``LocalSkills``, aligned with runtime
 ``Skills(loaders=[LocalSkills(...)])``.
 """
 
@@ -11,10 +11,11 @@ import tempfile
 import zipfile
 from pathlib import Path
 
-from agno.skills import LocalSkills
 from agno.skills.validator import validate_metadata, validate_skill_directory
 
-from openfox.schemas.config import Config
+from openfox.utils.const import SKILLS_PATH
+from openfox.utils.skills import LocalSkills
+
 from openfox.schemas.skill import SkillInfo
 
 # Upload size cap (matches reasonable browser / API limits).
@@ -36,12 +37,9 @@ class SkillExistsError(SkillPackageError):
     """Raised when install would overwrite an existing skill folder."""
 
 
-def resolve_skills_root(config: Config) -> Path:
-    """Return the absolute skills directory from config (relative paths use process cwd)."""
-    raw = Path(config.skills_path).expanduser()
-    if raw.is_absolute():
-        return raw.resolve()
-    return (Path.cwd() / raw).resolve()
+def resolve_skills_root() -> Path:
+    """Return the absolute skills directory (``openfox.utils.const.SKILLS_PATH``)."""
+    return SKILLS_PATH.expanduser().resolve()
 
 
 def _agno_validate_dir(skill_dir: Path) -> None:
@@ -49,6 +47,15 @@ def _agno_validate_dir(skill_dir: Path) -> None:
     errors = validate_skill_directory(skill_dir)
     if errors:
         raise SkillPackageError("; ".join(errors))
+
+
+def _agno_validate_dir_unless_disabled(skill_dir: Path) -> None:
+    """Full Agno validation for active installs; hyphen-suffixed dirs skip (spec forbids that shape)."""
+    if skill_dir.name.endswith("-"):
+        if not (skill_dir / "SKILL.md").is_file():
+            raise SkillPackageError("SKILL.md missing in skill directory")
+        return
+    _agno_validate_dir(skill_dir)
 
 
 def validate_skill_folder_name(name: str) -> str:
@@ -65,14 +72,39 @@ def validate_skill_folder_name(name: str) -> str:
     return name
 
 
+def validate_skill_install_folder_name(folder_name: str) -> str:
+    """Validate a folder under the skills root: ``skill`` or ``skill-`` (disable / list-only)."""
+    folder_name = folder_name.strip()
+    if not folder_name or "/" in folder_name or "\\" in folder_name or folder_name.startswith("."):
+        raise SkillPackageError(
+            "Invalid skill name: empty, hidden, or contains path separators",
+        )
+    logical = folder_name[:-1] if folder_name.endswith("-") else folder_name
+    if not logical:
+        raise SkillPackageError("Invalid skill folder name")
+    errs = validate_metadata(
+        {"name": logical, "description": "-"},
+        skill_dir=Path(logical),
+    )
+    if errs:
+        raise SkillPackageError("; ".join(errs))
+    return folder_name
+
+
 def _skill_info_from_dir(skill_dir: Path) -> SkillInfo:
-    """Build SkillInfo using LocalSkills (same loader path as runtime, no re-validation)."""
-    loader = LocalSkills(str(skill_dir.resolve()), validate=False)
+    """Build SkillInfo using LocalSkills (same loader as runtime; list includes disabled dirs)."""
+    loader = LocalSkills(
+        str(skill_dir.resolve()),
+        validate=False,
+        skip_hyphen_suffixed=False,
+    )
     loaded = loader.load()
     if len(loaded) != 1:
         raise SkillPackageError(f"Expected exactly one skill in directory: {skill_dir}")
     s = loaded[0]
+    activate = not skill_dir.name.endswith("-")
     return SkillInfo(
+        activate=activate,
         name=s.name,
         description=(s.description or "").strip(),
         license=s.license,
@@ -80,9 +112,9 @@ def _skill_info_from_dir(skill_dir: Path) -> SkillInfo:
     )
 
 
-def list_installed_skills(config: Config) -> list[SkillInfo]:
+def list_installed_skills() -> list[SkillInfo]:
     """Scan skills root for subdirectories with valid SKILL.md; skip invalid entries."""
-    root = resolve_skills_root(config)
+    root = resolve_skills_root()
     if not root.is_dir():
         return []
     out: list[SkillInfo] = []
@@ -91,9 +123,12 @@ def list_installed_skills(config: Config) -> list[SkillInfo]:
             continue
         if not (p / "SKILL.md").is_file():
             continue
-        errs = validate_skill_directory(p)
-        if errs:
-            continue
+        # Disabled installs use a trailing ``-`` on the folder name; Agno's directory
+        # validator rejects those names (must match metadata / no trailing hyphen in spec).
+        if not p.name.endswith("-"):
+            errs = validate_skill_directory(p)
+            if errs:
+                continue
         try:
             out.append(_skill_info_from_dir(p))
         except SkillPackageError:
@@ -130,7 +165,7 @@ def _zip_top_level_folder(namelist: list[str]) -> str:
             "Archive must contain exactly one top-level skill folder",
         )
     root_folder = roots.pop()
-    validate_skill_folder_name(root_folder)
+    validate_skill_install_folder_name(root_folder)
     prefix = root_folder + "/"
     for p in normalized:
         if p != root_folder and not p.startswith(prefix):
@@ -197,16 +232,16 @@ def validate_skill_zip(path: Path) -> tuple[str, Path]:
             folder = _zip_top_level_folder(zf.namelist())
             _safe_extract_skill_zip(zf, tmp, folder)
         skill_dir = tmp / folder
-        _agno_validate_dir(skill_dir)
+        _agno_validate_dir_unless_disabled(skill_dir)
         return folder, tmp
     except Exception:
         shutil.rmtree(tmp, ignore_errors=True)
         raise
 
 
-def install_skill_from_zip(path: Path, config: Config) -> SkillInfo:
+def install_skill_from_zip(path: Path) -> SkillInfo:
     """Install a new skill from ZIP; fails if the target folder already exists."""
-    root = resolve_skills_root(config)
+    root = resolve_skills_root()
     with zipfile.ZipFile(path, "r") as zf:
         folder = _zip_top_level_folder(zf.namelist())
     if (root / folder).exists():
@@ -221,17 +256,17 @@ def install_skill_from_zip(path: Path, config: Config) -> SkillInfo:
         shutil.move(str(skill_dir), str(target))
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-    _agno_validate_dir(target)
+    _agno_validate_dir_unless_disabled(target)
     return _skill_info_from_dir(target)
 
 
-def replace_skill_from_zip(path: Path, expected_name: str, config: Config) -> SkillInfo:
+def replace_skill_from_zip(path: Path, expected_name: str) -> SkillInfo:
     """Remove an existing skill directory and install from ZIP.
 
     The top-level folder name inside the ZIP must equal ``expected_name``.
     """
-    validate_skill_folder_name(expected_name)
-    root = resolve_skills_root(config)
+    validate_skill_install_folder_name(expected_name)
+    root = resolve_skills_root()
     target = root / expected_name
     if not target.is_dir():
         raise SkillNotFoundError(f'Skill "{expected_name}" not found; cannot update')
@@ -248,15 +283,56 @@ def replace_skill_from_zip(path: Path, expected_name: str, config: Config) -> Sk
         shutil.move(str(skill_dir), str(target))
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-    _agno_validate_dir(target)
+    _agno_validate_dir_unless_disabled(target)
     return _skill_info_from_dir(target)
 
 
-def delete_skill(name: str, config: Config) -> None:
-    """Delete the skill directory named ``name`` under the configured skills root."""
-    validate_skill_folder_name(name)
-    root = resolve_skills_root(config)
+def delete_skill(name: str) -> None:
+    """Delete the skill directory named ``name`` under the skills root."""
+    validate_skill_install_folder_name(name)
+    root = resolve_skills_root()
     target = root / name
     if not target.is_dir():
         raise SkillNotFoundError(f'Skill "{name}" not found')
     shutil.rmtree(target)
+
+
+def set_skill_activate(folder_name: str, activate: bool) -> SkillInfo:
+    """Enable or disable agent loading by renaming the install folder (trailing ``-`` when off)."""
+    validate_skill_install_folder_name(folder_name)
+    root = resolve_skills_root()
+    current = root / folder_name
+    if not current.is_dir():
+        raise SkillNotFoundError(f'Skill "{folder_name}" not found')
+    if not (current / "SKILL.md").is_file():
+        raise SkillPackageError(f'Not a skill directory (missing SKILL.md): {folder_name}')
+
+    now_active = not current.name.endswith("-")
+    if now_active == activate:
+        return _skill_info_from_dir(current)
+
+    if activate:
+        if not current.name.endswith("-"):
+            raise SkillPackageError(
+                'Cannot activate: folder name must end with "-" when disabled',
+            )
+        naked = current.name[:-1]
+        if not naked:
+            raise SkillPackageError("Invalid disabled folder name")
+        validate_skill_folder_name(naked)
+        dest = root / naked
+        if dest.exists():
+            raise SkillPackageError(
+                f'Cannot activate: a folder named "{naked}" already exists',
+            )
+    else:
+        disabled_name = f"{current.name}-"
+        dest = root / disabled_name
+        if dest.exists():
+            raise SkillPackageError(
+                f'Cannot disable: a folder named "{disabled_name}" already exists',
+            )
+
+    shutil.move(str(current), str(dest))
+    _agno_validate_dir_unless_disabled(dest)
+    return _skill_info_from_dir(dest)

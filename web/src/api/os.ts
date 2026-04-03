@@ -297,6 +297,8 @@ export async function refreshMetricsAPI(
 // --- OpenFox（`/config`、`/skills`，OpenAPI 标签 OpenFox / OpenFox Skills）---
 
 export type OpenFoxSkillInfo = {
+  /** 是否对 Agent 生效（安装目录名以 `-` 结尾时为 false） */
+  activate: boolean
   name: string
   description: string
   license?: string | null
@@ -346,6 +348,29 @@ export async function uploadOpenFoxSkillAPI(
     authToken,
     body: fd,
   })
+  if (!res.ok) {
+    const message = await readAgentOsErrorMessage(res)
+    return { ok: false, status: res.status, message }
+  }
+  const skill = (await res.json()) as OpenFoxSkillInfo
+  return { ok: true, skill }
+}
+
+export async function patchOpenFoxSkillActivateAPI(
+  base: string,
+  authToken: string | undefined,
+  diskFolderName: string,
+  activate: boolean,
+): Promise<OpenFoxSkillMutationResult> {
+  const res = await agentOsRequest(
+    APIRoutes.OpenFoxSkillActivate(base, diskFolderName),
+    {
+      method: 'PATCH',
+      authToken,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ activate }),
+    },
+  )
   if (!res.ok) {
     const message = await readAgentOsErrorMessage(res)
     return { ok: false, status: res.status, message }

@@ -107,6 +107,8 @@ export default {
     updated: "Updated skill “{name}”",
     deleteFailed: "Delete failed (HTTP {status}): {message}",
     deleted: "Deleted skill “{name}”",
+    toggleFailed: "Toggle activation failed (HTTP {status}): {message}",
+    activateUpdated: "Updated activation for “{name}”",
     manageHint:
       "Sign in and set the Agent OS URL to manage skill packages.",
     uploadZipHint:
@@ -115,16 +117,19 @@ export default {
     emptyTable: "No skills yet. Use Upload skill above to install from a ZIP.",
     uploadZipAria: "Select skill ZIP file",
     actionsAria: "Skill actions",
-    footerHint:
-      "Restart the Agent process after changes to load new skills. SKILL.md must include name / description and match the directory name.",
     deleteTitle: "Delete skill?",
     deleteDescription: "“{name}” will be permanently removed. This cannot be undone.",
     colName: "Name",
+    colActivate: "Active",
     colDescription: "Description",
     colPath: "Path",
     colLicense: "License",
     emptyCell: "—",
     colActions: "Actions",
+    activateSwitch: {
+      enableAria: "Enable skill “{name}” for the agent",
+      disableAria: "Disable skill “{name}” (folder name will get a trailing “-”)",
+    },
     createSkill: "Upload skill",
     updating: "Updating…",
     update: "Update",

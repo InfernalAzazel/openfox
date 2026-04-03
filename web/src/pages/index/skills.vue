@@ -1,20 +1,17 @@
 <script setup lang="ts">
-import {
-  FlexRender,
-  createColumnHelper,
-  getCoreRowModel,
-  useVueTable,
-} from "@tanstack/vue-table"
-import { computed, h, onMounted, ref } from "vue"
+import { createColumnHelper } from "@tanstack/vue-table"
+import { computed, h, nextTick, onMounted, ref } from "vue"
 import { useI18n } from "vue-i18n"
 import {
   deleteOpenFoxSkillAPI,
   listOpenFoxSkillsAPI,
+  patchOpenFoxSkillActivateAPI,
   replaceOpenFoxSkillAPI,
   uploadOpenFoxSkillAPI,
   type OpenFoxSkillInfo,
 } from "@/api/os"
 import AppPageScaffold from "@/components/AppPageScaffold.vue"
+import { DataTable } from "@/components/ui/data-table"
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -25,21 +22,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableEmpty,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import {
   Tooltip,
   TooltipContent,
@@ -62,6 +51,18 @@ const replacingName = ref<string | null>(null)
 const deletingName = ref<string | null>(null)
 const deleteConfirmOpen = ref(false)
 const pendingDeleteName = ref<string | null>(null)
+const togglingFolder = ref<string | null>(null)
+
+/** 磁盘上的技能目录名（可能与 SKILL.md 的 name 不同，例如停用时常以「-」结尾） */
+function skillDiskFolder(s: OpenFoxSkillInfo): string {
+  const normalized = s.path.replace(/\\/g, "/")
+  const parts = normalized.split("/").filter(Boolean)
+  return parts[parts.length - 1] || s.name
+}
+
+function skillRowId(row: OpenFoxSkillInfo) {
+  return row.path
+}
 
 /** 操作列：悬停展开下拉（单行仅一个菜单打开） */
 const openActionsForName = ref<string | null>(null)
@@ -109,11 +110,78 @@ const hasOsAuth = computed(() => {
   return !!(base && token)
 })
 
+async function loadList(opts?: { silent?: boolean }) {
+  const silent = opts?.silent ?? false
+  const base = getAgentOsBaseUrl()
+  const token = app.value.access_token?.trim() || undefined
+  if (!base || !token) {
+    pageError.value = t("skills.needLoginOs")
+    return
+  }
+  if (!silent) {
+    loading.value = true
+  }
+  pageError.value = null
+  try {
+    const r = await listOpenFoxSkillsAPI(base, token)
+    if (!r.ok) {
+      pageError.value = t("skills.loadFailed", {
+        status: r.status,
+        message: r.message,
+      })
+      return
+    }
+    items.value = r.data
+    await nextTick()
+  } finally {
+    if (!silent) {
+      loading.value = false
+    }
+  }
+}
+
+async function onToggleActivate(diskFolder: string, activate: boolean) {
+  const base = getAgentOsBaseUrl()
+  const token = app.value.access_token?.trim() || undefined
+  if (!base || !token) {
+    pageError.value = t("skills.needLogin")
+    return
+  }
+  const row = items.value.find((s) => skillDiskFolder(s) === diskFolder)
+  if (row && row.activate === activate) {
+    return
+  }
+  togglingFolder.value = diskFolder
+  pageError.value = null
+  pageSuccess.value = null
+  try {
+    const r = await patchOpenFoxSkillActivateAPI(base, token, diskFolder, activate)
+    if (!r.ok) {
+      pageError.value = t("skills.toggleFailed", {
+        status: r.status,
+        message: r.message,
+      })
+      return
+    }
+    pageSuccess.value = t("skills.activateUpdated", { name: r.skill.name })
+    // 必须整表替换 data：原地 splice 往往不触发 @tanstack/vue-table 与表格状态同步，
+    // 界面会停在旧行；silent 避免 loading 造成闪烁。
+    await loadList({ silent: true })
+  } finally {
+    togglingFolder.value = null
+  }
+}
+
 const columnHelper = createColumnHelper<OpenFoxSkillInfo>()
 
 const tableColumns = computed(() => {
   void locale.value
   return [
+  columnHelper.accessor("activate", {
+    header: t("skills.colActivate"),
+    // 开关在模板中渲染，直接绑定 row.original，避免 FlexRender/非响应式 table 导致陈旧
+    cell: () => null,
+  }),
   columnHelper.accessor("name", {
     header: t("skills.colName"),
     cell: (ctx) =>
@@ -180,38 +248,6 @@ const tableColumns = computed(() => {
   }),
 ]
 })
-
-const table = useVueTable({
-  data: items,
-  get columns() {
-    return tableColumns.value
-  },
-  getCoreRowModel: getCoreRowModel(),
-})
-
-async function loadList() {
-  const base = getAgentOsBaseUrl()
-  const token = app.value.access_token?.trim() || undefined
-  if (!base || !token) {
-    pageError.value = t("skills.needLoginOs")
-    return
-  }
-  loading.value = true
-  pageError.value = null
-  try {
-    const r = await listOpenFoxSkillsAPI(base, token)
-    if (!r.ok) {
-      pageError.value = t("skills.loadFailed", {
-        status: r.status,
-        message: r.message,
-      })
-      return
-    }
-    items.value = r.data
-  } finally {
-    loading.value = false
-  }
-}
 
 function triggerUpload() {
   pageSuccess.value = null
@@ -322,6 +358,9 @@ async function confirmDelete() {
 function headerClass(columnId: string) {
   const base =
     "text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+  if (columnId === "activate") {
+    return cn("w-16 shrink-0", base)
+  }
   if (columnId === "name") {
     return cn("w-[10rem] min-w-0 shrink-0 font-mono", base)
   }
@@ -343,6 +382,9 @@ function headerClass(columnId: string) {
 function cellClass(columnId: string) {
   if (columnId === "actions") {
     return "min-w-0 py-3 pl-2 text-right align-top"
+  }
+  if (columnId === "activate") {
+    return "w-16 shrink-0 py-3 align-top"
   }
   return "min-w-0 py-3 align-top"
 }
@@ -389,7 +431,7 @@ onMounted(() => {
               class="text-left text-xs font-normal tracking-normal text-muted-foreground"
             >
               {{
-                loading
+                loading && !items.length
                   ? t("common.loading")
                   : t("common.itemsInTable", { count: items.length })
               }}
@@ -448,126 +490,102 @@ onMounted(() => {
           </div>
 
           <div class="overflow-x-auto">
-            <Table class="table-fixed">
-              <TableHeader>
-                <TableRow
-                  v-for="headerGroup in table.getHeaderGroups()"
-                  :key="headerGroup.id"
-                  class="border-border hover:bg-transparent"
-                >
-                  <TableHead
-                    v-for="header in headerGroup.headers"
-                    :key="header.id"
-                    :class="cn(headerClass(header.column.id))"
+            <DataTable
+              :columns="tableColumns"
+              :data="items"
+              table-class="table-fixed"
+              :header-class="headerClass"
+              :cell-class="cellClass"
+              :get-row-id="skillRowId"
+              :loading="loading && !items.length"
+              :loading-label="t('common.loading')"
+              :empty-label="t('skills.emptyTable')"
+            >
+              <template #cell-activate="{ original }">
+                <div class="flex items-center">
+                  <Switch
+                    :model-value="original.activate"
+                    :disabled="
+                      togglingFolder === skillDiskFolder(original) || !hasOsAuth
+                    "
+                    :aria-label="
+                      original.activate
+                        ? t('skills.activateSwitch.disableAria', {
+                            name: original.name,
+                          })
+                        : t('skills.activateSwitch.enableAria', {
+                            name: original.name,
+                          })
+                    "
+                    @update:model-value="
+                      (v) => onToggleActivate(skillDiskFolder(original), v)
+                    "
+                  />
+                </div>
+              </template>
+              <template #cell-actions="{ original }">
+                <div class="flex justify-end">
+                  <DropdownMenu
+                    :modal="false"
+                    :open="openActionsForName === skillDiskFolder(original)"
+                    @update:open="onActionsMenuOpenChange"
                   >
-                    <FlexRender
-                      v-if="!header.isPlaceholder"
-                      :render="header.column.columnDef.header"
-                      :props="header.getContext()"
-                    />
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <template v-if="loading && !items.length">
-                  <TableEmpty :colspan="table.getAllColumns().length">
-                    <span class="text-sm text-muted-foreground">{{ t("common.loading") }}</span>
-                  </TableEmpty>
-                </template>
-                <template v-else-if="!table.getRowModel().rows.length">
-                  <TableEmpty :colspan="table.getAllColumns().length">
-                    <span class="text-sm text-muted-foreground">
-                      {{ t("skills.emptyTable") }}
-                    </span>
-                  </TableEmpty>
-                </template>
-                <template v-else>
-                  <TableRow
-                    v-for="row in table.getRowModel().rows"
-                    :key="row.id"
-                    class="border-border/80 transition-colors hover:bg-muted/50 dark:hover:bg-white/5"
-                  >
-                    <TableCell
-                      v-for="cell in row.getVisibleCells()"
-                      :key="cell.id"
-                      :class="cn(cellClass(cell.column.id))"
+                    <DropdownMenuTrigger as-child>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        class="h-8 w-8 shrink-0 text-muted-foreground hover:bg-accent dark:hover:bg-white/10"
+                        :aria-label="t('skills.actionsAria')"
+                        @pointerenter="showActionsMenu(skillDiskFolder(original))"
+                        @pointerleave="scheduleActionsMenuClose()"
+                      >
+                        <MoreVertical class="size-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="end"
+                      class="w-40"
+                      @pointerenter="
+                        onActionsContentPointerEnter(skillDiskFolder(original))
+                      "
+                      @pointerleave="scheduleActionsMenuClose()"
                     >
-                      <template v-if="cell.column.id === 'actions'">
-                        <div class="flex justify-end">
-                          <DropdownMenu
-                            :modal="false"
-                            :open="openActionsForName === row.original.name"
-                            @update:open="onActionsMenuOpenChange"
-                          >
-                            <DropdownMenuTrigger as-child>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                class="h-8 w-8 shrink-0 text-muted-foreground hover:bg-accent dark:hover:bg-white/10"
-                                :aria-label="t('skills.actionsAria')"
-                                @pointerenter="showActionsMenu(row.original.name)"
-                                @pointerleave="scheduleActionsMenuClose()"
-                              >
-                                <MoreVertical class="size-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                              align="end"
-                              class="w-40"
-                              @pointerenter="
-                                onActionsContentPointerEnter(row.original.name)
-                              "
-                              @pointerleave="scheduleActionsMenuClose()"
-                            >
-                              <DropdownMenuItem
-                                class="text-xs font-semibold uppercase tracking-wide"
-                                :disabled="
-                                  replacingName === row.original.name || uploading
-                                "
-                                @select="
-                                  () => {
-                                    triggerReplace(row.original.name)
-                                  }
-                                "
-                              >
-                                {{
-                                  replacingName === row.original.name
-                                    ? t("skills.updating")
-                                    : t("skills.update")
-                                }}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                variant="destructive"
-                                class="text-xs font-semibold uppercase tracking-wide"
-                                :disabled="deletingName === row.original.name"
-                                @select="
-                                  () => {
-                                    requestDelete(row.original.name)
-                                  }
-                                "
-                              >
-                                {{ t("common.delete") }}
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </template>
-                      <FlexRender
-                        v-else
-                        :render="cell.column.columnDef.cell"
-                        :props="cell.getContext()"
-                      />
-                    </TableCell>
-                  </TableRow>
-                </template>
-              </TableBody>
-            </Table>
+                      <DropdownMenuItem
+                        class="text-xs font-semibold uppercase tracking-wide"
+                        :disabled="
+                          replacingName === skillDiskFolder(original) || uploading
+                        "
+                        @select="
+                          () => {
+                            triggerReplace(skillDiskFolder(original))
+                          }
+                        "
+                      >
+                        {{
+                          replacingName === skillDiskFolder(original)
+                            ? t('skills.updating')
+                            : t('skills.update')
+                        }}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        variant="destructive"
+                        class="text-xs font-semibold uppercase tracking-wide"
+                        :disabled="deletingName === skillDiskFolder(original)"
+                        @select="
+                          () => {
+                            requestDelete(skillDiskFolder(original))
+                          }
+                        "
+                      >
+                        {{ t("common.delete") }}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </template>
+            </DataTable>
           </div>
         </div>
-
-        <p class="mt-3 text-xs leading-relaxed text-muted-foreground">
-          {{ t("skills.footerHint") }}
-        </p>
       </div>
     </div>
 

@@ -47,9 +47,12 @@ export const APIRoutes = {
   OpenFoxConfig: (agentOSUrl: string) =>
     `${agentOSUrl.replace(/\/$/, '')}/expand/config`,
 
-  /** OpenFox: `GET` / `POST` `/skills`, `PUT` / `DELETE` `/skills/{name}` */
+  /** OpenFox: `GET` / `POST` `/skills`, `PATCH /skills/activate/{name}`, `PUT` / `DELETE` `/skills/{name}` */
   OpenFoxSkills: (agentOSUrl: string) =>
     `${agentOSUrl.replace(/\/$/, '')}/expand/skills`,
   OpenFoxSkillByName: (agentOSUrl: string, name: string) =>
     `${agentOSUrl.replace(/\/$/, '')}/expand/skills/${encodeURIComponent(name)}`,
+  /** OpenFox: `PATCH` body `{ activate }` */
+  OpenFoxSkillActivate: (agentOSUrl: string, name: string) =>
+    `${agentOSUrl.replace(/\/$/, '')}/expand/skills/activate/${encodeURIComponent(name)}`,
 }

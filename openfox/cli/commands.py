@@ -29,7 +29,7 @@ def init():
     docs_enabled = typer.prompt(typer.style("Enable API docs? (docs_enabled)", fg=typer.colors.CYAN), default=config.docs_enabled)
     config.docs_enabled = docs_enabled
     typer.secho(f"docs_enabled: {docs_enabled}", fg=typer.colors.MAGENTA)
-    
+
     # os_security_key
     os_security_key = secrets.token_hex(16)
     config.os_security_key = os_security_key
@@ -67,7 +67,7 @@ def serve(host: str = "0.0.0.0", port: int = 7777) -> None:
     """
     init()
     # Import after init() so configuration is loaded when the agent starts.
-    from openfox.agent import OpenFoxAgent
+    from openfox.core.agent import OpenFoxAgent
 
     openfox_agent = OpenFoxAgent()
     if port != 7777:
