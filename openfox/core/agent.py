@@ -9,6 +9,7 @@ from agno.skills import Skills
 from openfox.core.skills import ensure_skills_from_bundle
 from openfox.core.tools import build_openfox_toolkits
 from openfox.interfaces.feishu import Feishu
+from openfox.schemas.config import toolkit_filter_kwargs
 from openfox.routers import config
 from openfox.routers import skills
 from openfox.tools.config import ConfigTools
@@ -27,10 +28,9 @@ class OpenFoxAgent:
     """Wires OpenFox config, storage, tools, and AgentOS runtime."""
     
     def __init__(self):
-        self.feishu_tools = FeishuTools()
         self.config_tools = ConfigTools()
-        self.mcp_config_tools = MCPConfigTools(self.config_tools)
         self.config = self.config_tools.load()
+        self.feishu_tools = FeishuTools()
         DB_PATH.parent.mkdir(parents=True, exist_ok=True)
         ensure_skills_from_bundle()
         self.db = AsyncSqliteDb(db_file=str(DB_PATH))
@@ -48,10 +48,9 @@ class OpenFoxAgent:
         ]
 
         tools_list = build_openfox_toolkits(
-            self.config,
+            self.config_tools,
             self.schedule_mgr,
             self.feishu_tools,
-            self.mcp_config_tools,
         )
 
         self.agent = Agent(

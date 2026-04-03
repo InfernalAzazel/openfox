@@ -8,8 +8,8 @@ from openfox.tools.config import ConfigTools
 class MCPConfigTools(Toolkit):
     """MCP configuration tools: view, add, and remove MCP configurations."""
 
-    def __init__(self, config_tools: ConfigTools | None = None) -> None:
-        self._config_tools = config_tools or ConfigTools()
+    def __init__(self, **kwargs: Any) -> None:
+        self._config_tools = ConfigTools()
         super().__init__(
             name="mcp_config",
             tools=[
@@ -20,6 +20,7 @@ class MCPConfigTools(Toolkit):
                 self.remove_mcp,
                 self.clear_mcps,
             ],
+            **kwargs,
         )
 
     def list_mcps(self) -> list[dict[str, Any]]:

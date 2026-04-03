@@ -19,7 +19,7 @@ from openfox.tools.config import ConfigTools
 class FeishuTools(Toolkit):
     """Feishu (Lark) API toolkit: messaging helpers."""
 
-    def __init__(self,):
+    def __init__(self, **kwargs: Any) -> None:
         """Initialize Feishu tools from config."""
         self.config_tools = ConfigTools()
         self.config = self.config_tools.load()
@@ -28,7 +28,7 @@ class FeishuTools(Toolkit):
         self.encrypt_key = self.config.channels.feishu.encrypt_key
         self.verification_token = self.config.channels.feishu.verification_token
 
-        self.tools: List[Any] = [
+        self.tools = [
             self.send_text_message,
             self.send_image_message,
             self.send_file_message,
@@ -36,7 +36,7 @@ class FeishuTools(Toolkit):
             self.send_video_message,
         ]
 
-        super().__init__(name="feishu", tools=self.tools)
+        super().__init__(name="feishu", tools=self.tools, **kwargs)
 
     def _get_client(self) -> Client:
         return Client.builder().app_id(self.app_id).app_secret(self.app_secret).build()

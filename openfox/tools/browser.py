@@ -27,14 +27,14 @@ class BrowserTools(Toolkit):
     and process shutdown. All tool methods return UTF-8 JSON strings.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         tools = [
             self.launch_chrome_cdp,
             self.check_chrome_cdp,
             self.get_cdp_websocket_url,
             self.stop_chrome_cdp,
         ]
-        super().__init__(name="browser", tools=tools)
+        super().__init__(name="browser", tools=tools, **kwargs)
 
     def launch_chrome_cdp(
         self,
