@@ -26,7 +26,8 @@
 | 路径 | 说明 |
 |------|------|
 | `~/.openfox/config.json` | LLM、飞书、`cors_origin_list`、MCP 等配置 |
-| `~/.openfox/storage.db` |使用的 **SQLite** 会话与调度存储 |
+| `~/.openfox/storage.db` | 使用的 **SQLite** 会话与调度存储 |
+| `~/.openfox/skills` | 本地技能根目录（代码中 **`SKILLS_PATH`**，见 `openfox/utils/const.py`）；首次启动若不存在，会从包内 `openfox/skills` 复制（见 `openfox/core/skills.py`） |
 
 ---
 
@@ -38,7 +39,7 @@
 | **飞书** | 事件与消息接入，单聊/群聊（可 @ 机器人） |
 | **定时任务** | 内置调度器；对话里可用自然语言创建周期任务（CronTools），回调 Agent 指定端点 |
 | **工具** | 见下文「内置 Agent 工具」；另可通过 `config.mcps` 挂载 **MCP**，Web 控制台中的配置编辑对应 **ConfigTools**（非 Agent 对话工具） |
-| **技能** | `openfox/skills` 下 `SKILL.md`（LocalSkills）；Web 端支持上传技能包 |
+| **技能** | **`SKILLS_PATH`**（`~/.openfox/skills`）下各子目录中的 `SKILL.md`（LocalSkills）；Web 端支持上传技能包 |
 | **模型** | 通过 **LiteLLM** 对接 OpenAI 兼容 API（详见下文「模型」） |
 
 ---

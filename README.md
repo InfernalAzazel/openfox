@@ -27,6 +27,7 @@
 |------|-------------|
 | `~/.openfox/config.json` | LLM, Feishu, `cors_origin_list`, MCP, and related settings |
 | `~/.openfox/storage.db` | **SQLite** storage for sessions and scheduling |
+| `~/.openfox/skills` | Local **Skills** root (`SKILLS_PATH` in `openfox/utils/const.py`); on first run, if missing, copied from packaged `openfox/skills` (see `openfox/core/skills.py`) |
 
 ---
 
@@ -38,7 +39,7 @@
 | **Feishu** | Event and message intake; DM and group chat (mention the bot) |
 | **Scheduled jobs** | Built-in scheduler; create recurring tasks in natural language (CronTools) with callbacks to Agent endpoints |
 | **Tools** | See “Built-in Agent tools” below; you can also attach **MCP** via `config.mcps`. JSON config editing in the Web console uses **ConfigTools** (not an Agent chat tool). |
-| **Skills** | `SKILL.md` under `openfox/skills` (LocalSkills); upload skill packs from the Web UI |
+| **Skills** | `SKILL.md` under `SKILLS_PATH` (`~/.openfox/skills`, LocalSkills); upload skill packs from the Web UI |
 | **Models** | **LiteLLM** for OpenAI-compatible APIs (see “Models” below) |
 
 ---
