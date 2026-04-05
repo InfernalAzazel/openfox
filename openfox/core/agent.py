@@ -3,25 +3,19 @@ from agno.db.sqlite import AsyncSqliteDb
 from agno.models.litellm import LiteLLM
 from agno.os import AgentOS
 from agno.os.settings import AgnoAPISettings
-from agno.scheduler import ScheduleManager
 from agno.skills import Skills
 
 from openfox.core.skills import ensure_skills_from_bundle
 from openfox.core.tools import build_openfox_toolkits
 from openfox.interfaces.feishu import Feishu
-from openfox.schemas.config import toolkit_filter_kwargs
 from openfox.routers import config
 from openfox.routers import skills
 from openfox.tools.config import ConfigTools
 from openfox.tools.feishu import FeishuTools
-from openfox.tools.mcp_config import MCPConfigTools
 from openfox.utils.const import DB_PATH, SKILLS_PATH
 from openfox.utils.notify import send_notification
 from openfox.utils.skills import LocalSkills
 from openfox.utils.web_static import install_web_routes
-
-# Work around agno ScheduleManager: on interpreter exit, __del__ may run without `_pool` set.
-ScheduleManager.close = lambda self: (getattr(self, "_pool", None) and (self._pool.shutdown(wait=False), setattr(self, "_pool", None)))
 
 
 class OpenFoxAgent:
@@ -34,22 +28,23 @@ class OpenFoxAgent:
         DB_PATH.parent.mkdir(parents=True, exist_ok=True)
         ensure_skills_from_bundle()
         self.db = AsyncSqliteDb(db_file=str(DB_PATH))
-        self.schedule_mgr = ScheduleManager(self.db)
 
         self.instructions = [
-            "当用户要求定时或周期执行任务时使用 CronTools.create。",
-            "用户说「每X帮我做Y」时：将「每X」映射为 cron_expr（例如每分钟→* * * * *）。",
-            "将「帮我做Y」整句作为 message：message 是到点时 Agent 要执行的任务正文（可含工具调用），不要包含时间或周期描述。",
-            "从用户文本中自动提取创建定时任务所需的参数（cron_expr、message、channel、timezone）。",
-            "当用户询问有哪些定时任务时使用 CronTools.list。",
-            "若技能文档给出 CLI 示例，必须使用 run_shell 执行。",
-            "当用户希望通过聊天配置 MCP 时，使用 mcp_config 工具。",
-            f"默认时区为 {self.config.time_zone}。",
+            # default timezone is set in config.json
+            f"The default timezone is {self.config.time_zone}.",
+            # When the user wants to create a scheduled/periodic task (create_schedule, etc.) and a channel appears in the context：
+            (
+                "When the user asks to create a recurring or scheduled task (e.g. create_schedule) and a "
+                "`channel` object appears in the context: the schedule payload JSON must include a `channel` "
+                "field in addition to `message`, and its value must match that context object exactly (copy it verbatim)."
+            ),
+            # mcp config tool
+            "When the user wants to configure MCP through chat, use the mcp_config tool.",
         ]
 
         tools_list = build_openfox_toolkits(
+            self.db,
             self.config_tools,
-            self.schedule_mgr,
             self.feishu_tools,
         )
 
@@ -60,10 +55,13 @@ class OpenFoxAgent:
                 api_key=self.config.llm.api_key,
                 api_base=self.config.llm.api_base,
             ),
+            instructions=self.instructions,
             tools=tools_list,
             skills=Skills(loaders=[LocalSkills(str(SKILLS_PATH))]),
             db=self.db,
             markdown=True,
+            add_history_to_context=True,
+            num_history_runs=3,
             post_hooks=[send_notification],
         )
 

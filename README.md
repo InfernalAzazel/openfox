@@ -37,7 +37,7 @@
 |------------|-------------|
 | **Web console** | Chat, session list, usage metrics, skill upload/management, Cron scheduling, JSON config editor (login required; use `os_security_key` from config) |
 | **Feishu** | Event and message intake; DM and group chat (mention the bot) |
-| **Scheduled jobs** | Built-in scheduler; create recurring tasks in natural language (CronTools) with callbacks to Agent endpoints |
+| **Scheduled jobs** | Built-in scheduler; enable with `tools.scheduler` (**SchedulerConfig**). Agent toolkit **SchedulerTools** creates recurring tasks (cron → POST Agent run endpoint) |
 | **Tools** | See “Built-in Agent tools” below; you can also attach **MCP** via `config.mcps`. JSON config editing in the Web console uses **ConfigTools** (not an Agent chat tool). |
 | **Skills** | `SKILL.md` under `SKILLS_PATH` (`~/.openfox/skills`, LocalSkills); upload skill packs from the Web UI |
 | **Models** | **LiteLLM** for OpenAI-compatible APIs (see “Models” below) |
@@ -49,8 +49,7 @@
 | Tool class | What it does |
 |------------|----------------|
 | **ShellTools** | Run shell commands on the host where OpenFox runs (Agno) |
-| **CronTools** | Create / list scheduled jobs; Cron expressions invoke this Agent's run endpoint |
-| **BrowserTools** | Local Chromium **remote debugging (CDP)**: launch or reuse the browser, health checks, get DevTools WebSocket, stop the process—for automation / Playwright, etc. |
+| **SchedulerTools** | Registered when `tools.scheduler.activate` is true. Create / list / get / delete / disable jobs; cron expressions invoke this Agent's run endpoint |
 | **FeishuTools** | Feishu-related actions (e.g. messaging with the channel) |
 | **MCPConfigTools** | Add / remove / update MCP-related config in chat to extend tools dynamically |
 | **WebSearchTools** | Search the web |

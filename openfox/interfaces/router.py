@@ -63,22 +63,28 @@ def attach_routes(
         open_id = ev.sender.sender_id.open_id
         chat_id = ev.message.chat_id
         message_type = ev.message.message_type
-        message_text = ""
+        message = ""
         
         if message_type != "text":
             return
 
         with contextlib.suppress(json.JSONDecodeError, TypeError): 
-            message_text = json.loads(ev.message.content).get("text", "")
+            message = json.loads(ev.message.content).get("text", "")
 
         logger.info(
             f"[Feishu] event_id={event_id} message_type={message_type} message_id={message_id}\n"
-            + f"open_id={open_id} chat_id={chat_id}: {message_text[:80]}..."
+            + f"open_id={open_id} chat_id={chat_id}: {message[:80]}..."
         )
-        channel={"channel": {"type": "feishu", "open_id": open_id, "chat_id": chat_id}}
-        message = f"channel: {json.dumps(channel['channel'])}\n{message_text}"
+
         try:
-            response = await runner.arun(message, user_id=open_id, session_id=f"channel:{open_id}")
+            # dependencies write the channel to the model context, so that the payload of create_schedule can include the channel; when the schedule is triggered, the channel is passed to arun via the POST body.
+            response = await runner.arun(
+                message,
+                user_id=open_id,
+                session_id=f"channel:{open_id}",
+                dependencies={"channel": {"type": "feishu", "open_id": open_id, "chat_id": chat_id}},
+                add_dependencies_to_context=True,
+            )
         except Exception as e:
             logger.error(f"Feishu message handling error: {e}")
             await feishu_tools.send_text_message(

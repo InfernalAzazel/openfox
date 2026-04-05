@@ -76,16 +76,14 @@ class MCPConfig(ToolkitFilterFields):
 
     activate: bool = Field(default=True, description="Register MCP server tools")
 
-class CronConfig(ToolkitFilterFields):
-    """OpenFox ``CronTools`` — scheduler callbacks into the Agent."""
+class SchedulerConfig(ToolkitFilterFields):
+    """OpenFox scheduled jobs: ``CronTools`` wraps Agno ``ScheduleManager``.
 
-    activate: bool = Field(default=True, description="Register create/list/get/delete/disable for cron jobs")
+    JSON / env path: ``tools.scheduler``. When ``activate`` is false, the toolkit is not registered.
+    Exposed tools: ``create``, ``list``, ``get``, ``delete``, ``disable`` (five-field cron → POST Agent run).
+    """
 
-class BrowserConfig(ToolkitFilterFields):
-    """OpenFox CDP browser toolkit (Chromium remote debugging)."""
-
-    activate: bool = Field(default=True, description="Register local Chromium CDP tools")
-
+    activate: bool = Field(default=True, description="Register CronTools (async schedule CRUD)")
 
 class ShellConfig(ToolkitFilterFields):
     """Agno ``ShellTools`` — local shell (`Local → Shell <https://docs.agno.com/tools/toolkits/local/shell>`_)."""
@@ -266,8 +264,7 @@ class ToolsConfig(BaseModel):
     Uses ``BaseModel`` so the host env var ``SHELL`` does not collide with toolkit settings.
     """
     mcp: MCPConfig = Field(default_factory=MCPConfig, description="MCP server (OpenFox)")
-    cron: CronConfig = Field(default_factory=CronConfig, description="Scheduler (OpenFox CronTools)")
-    browser: BrowserConfig = Field(default_factory=BrowserConfig, description="CDP browser (OpenFox)")
+    scheduler: SchedulerConfig = Field(default_factory=SchedulerConfig, description="Scheduler (CronTools; tools.scheduler)")
     shell: ShellConfig = Field(default_factory=ShellConfig, description="Shell (Agno)")
     websearch: WebSearchConfig = Field(default_factory=WebSearchConfig, description="Web search (Agno)")
     arxiv: ArxivConfig = Field(default_factory=ArxivConfig, description="Arxiv settings")

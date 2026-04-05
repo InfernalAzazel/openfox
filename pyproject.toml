@@ -5,8 +5,9 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "agno[scheduler]>=2.5.9",
+    "agno[scheduler]>=2.5.14",
     "aiosqlite>=0.22.1",
+    "anthropic>=0.89.0",
     "arxiv>=2.4.1",
     "asyncer>=0.0.17",
     "baidusearch>=1.0.3",

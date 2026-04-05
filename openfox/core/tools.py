@@ -18,19 +18,20 @@ from agno.tools.webbrowser import WebBrowserTools
 from agno.tools.websearch import WebSearchTools
 from agno.tools.wikipedia import WikipediaTools
 from agno.tools.youtube import YouTubeTools
+from agno.tools.scheduler import SchedulerTools
 
 from openfox.schemas.config import toolkit_filter_kwargs
-from openfox.tools.browser import BrowserTools
 from openfox.tools.config import ConfigTools
 from openfox.tools.feishu import FeishuTools
 from openfox.tools.mcp_config import MCPConfigTools
-from openfox.tools.scheduler import CronTools
 from openfox.utils.mcps import build_mcps
 
+# Work around agno ScheduleManager: on interpreter exit, __del__ may run without `_pool` set.
+ScheduleManager.close = lambda self: (getattr(self, "_pool", None) and (self._pool.shutdown(wait=False), setattr(self, "_pool", None)))
 
 def build_openfox_toolkits(
+    db,
     config_tools: ConfigTools,
-    schedule_mgr: ScheduleManager,
     feishu_tools: FeishuTools,
 ) -> List[Toolkit]:
     """Assemble toolkits from ``config.tools`` (options follow Agno toolkit constructors)."""
@@ -40,17 +41,15 @@ def build_openfox_toolkits(
 
     tools_list.append(feishu_tools)
 
-    if tc.cron.activate:
+    if tc.scheduler.activate:
         tools_list.append(
-            CronTools(
-                endpoint=f"/agents/{config.agent_id}/runs",
-                schedule_mgr=schedule_mgr,
-                **toolkit_filter_kwargs(tc.cron),
+            SchedulerTools(
+                db=db,
+                default_endpoint=f"/agents/{config.agent_id}/runs",
+                default_timezone=config.time_zone,
+                **toolkit_filter_kwargs(tc.scheduler),
             ),
         )
-
-    if tc.browser.activate:
-        tools_list.append(BrowserTools(**toolkit_filter_kwargs(tc.browser)))
 
     if tc.mcp.activate:
          tools_list.append(MCPConfigTools(**toolkit_filter_kwargs(tc.mcp)))

@@ -15,7 +15,7 @@ resolution-markers = [
 
 [[package]]
 name = "agno"
-version = "2.5.9"
+version = "2.5.14"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docstring-parser" },
@@ -32,9 +32,9 @@ dependencies = [
     { name = "typer" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4a/ad/accb1cf3063fe1efffe9b41a37cccfa3b81c35486022d5b932668613df68/agno-2.5.9.tar.gz", hash = "sha256:e7a8b713bb49b79fd3b69ae70b3228321f753fd8c28fe0fcf72bcf435db14554", size = 1768973, upload-time = "2026-03-10T15:33:48.854Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3f/d9/26236de973e2b7f7e76897bf8c8f2b0f6a1d2f8c5fc43a1e7ae76a4a9078/agno-2.5.14.tar.gz", hash = "sha256:fd33ebf9b1683e3cd5e994a8b1e81d1d6a894f78b145099089f7180727d4a676", size = 1838839, upload-time = "2026-04-02T20:29:28.11Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/58/c2/ce5a1f02b2def0b50b37a5477bc9e979438b1aceef1d1d8ed3a6a2ab12f6/agno-2.5.9-py3-none-any.whl", hash = "sha256:78161e918a8e0a762da1b5d3e4ee82edb148cd454d710bf52442e5e15e8e6233", size = 2108165, upload-time = "2026-03-10T15:33:46.88Z" },
+    { url = "https://files.pythonhosted.org/packages/26/58/96dc4df9b3e6ab4b2dda22eeb9a87b8cbf0dbe9247a96b6c01c2d3243bee/agno-2.5.14-py3-none-any.whl", hash = "sha256:5fde4f7635218def4ee202ad544589c1e3670048a907df7210ecffdb8aff33cd", size = 2187863, upload-time = "2026-04-02T20:29:25.788Z" },
 ]
 
 [package.optional-dependencies]
@@ -203,6 +203,25 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/ee/67/531ea369ba64dcff5ec9c3402f9f51bf748cec26dde048a2f973a4eea7f5/annotated_types-0.7.0.tar.gz", hash = "sha256:aff07c09a53a08bc8cfccb9c85b05f1aa9a2a6f23728d790723543408344ce89", size = 16081, upload-time = "2024-05-20T21:33:25.928Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/78/b6/6307fbef88d9b5ee7421e68d78a9f162e0da4900bc5f5793f6d3d0e34fb8/annotated_types-0.7.0-py3-none-any.whl", hash = "sha256:1f02e8b43a8fbbc3f3e0d4f0f4bfc8131bcb4eebe8849b8e5c773f3a1c582a53", size = 13643, upload-time = "2024-05-20T21:33:24.1Z" },
+]
+
+[[package]]
+name = "anthropic"
+version = "0.89.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "distro" },
+    { name = "docstring-parser" },
+    { name = "httpx" },
+    { name = "jiter" },
+    { name = "pydantic" },
+    { name = "sniffio" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/60/af/862e216dd6c5e9bc02fb374eeaaa19017c51b90ddfa5692668a3811947bd/anthropic-0.89.0.tar.gz", hash = "sha256:f3d75b8ccef4b35f3702639519e461eba437d4bcdfabb69378c65a02ab7bda66", size = 596758, upload-time = "2026-04-03T18:57:01.348Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/22/ba/9f973f22abb512d5d17428a76e4ecbc8d49b9dd1b5a1152576d48c24dc1d/anthropic-0.89.0-py3-none-any.whl", hash = "sha256:c6d23854af798f2471ca3bc653cca394d392cc272fe803d3da9d63575b8445f0", size = 478847, upload-time = "2026-04-03T18:56:59.54Z" },
 ]
 
 [[package]]
@@ -1811,6 +1830,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "agno", extra = ["scheduler"] },
     { name = "aiosqlite" },
+    { name = "anthropic" },
     { name = "arxiv" },
     { name = "asyncer" },
     { name = "baidusearch" },
@@ -1837,8 +1857,9 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "agno", extras = ["scheduler"], specifier = ">=2.5.9" },
+    { name = "agno", extras = ["scheduler"], specifier = ">=2.5.14" },
     { name = "aiosqlite", specifier = ">=0.22.1" },
+    { name = "anthropic", specifier = ">=0.89.0" },
     { name = "arxiv", specifier = ">=2.4.1" },
     { name = "asyncer", specifier = ">=0.0.17" },
     { name = "baidusearch", specifier = ">=1.0.3" },
