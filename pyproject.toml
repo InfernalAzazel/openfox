@@ -11,6 +11,7 @@ dependencies = [
     "arxiv>=2.4.1",
     "asyncer>=0.0.17",
     "baidusearch>=1.0.3",
+    "chromadb>=1.0.0",
     "crawl4ai>=0.8.6",
     "ddgs>=9.12.0",
     "docker>=7.1.0",

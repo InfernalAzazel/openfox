@@ -5,6 +5,7 @@ from agno.os import AgentOS
 from agno.os.settings import AgnoAPISettings
 from agno.skills import Skills
 
+from openfox.core.knowledge import build_knowledge
 from openfox.core.skills import ensure_skills_from_bundle
 from openfox.core.tools import build_openfox_toolkits
 from openfox.interfaces.feishu import Feishu
@@ -28,6 +29,8 @@ class OpenFoxAgent:
         DB_PATH.parent.mkdir(parents=True, exist_ok=True)
         ensure_skills_from_bundle()
         self.db = AsyncSqliteDb(db_file=str(DB_PATH))
+
+        self.knowledge = build_knowledge(self.config, self.db)
 
         self.instructions = [
             # default timezone is set in config.json
@@ -62,6 +65,9 @@ class OpenFoxAgent:
             markdown=True,
             add_history_to_context=True,
             num_history_runs=3,
+            update_memory_on_run=True,
+            knowledge=self.knowledge if self.config.search_knowledge else None,
+            search_knowledge=self.config.search_knowledge,
             post_hooks=[send_notification],
         )
 

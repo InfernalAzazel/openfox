@@ -1,7 +1,10 @@
-from typing import List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
+
+from agno.vectordb.distance import Distance
+from agno.vectordb.search import SearchType
 
 # Agno toolkit index: https://docs.agno.com/tools/toolkits/overview
 
@@ -50,6 +53,59 @@ class LLMConfig(BaseSettings):
     model_name: str = Field(default="deepseek/deepseek-chat", description="Model name")
     api_base: str = Field(default="https://api.deepseek.com", description="API base URL")
     api_key: str = Field(default="", description="API key")
+
+
+class EmbedderConfig(BaseModel):
+    """LiteLLM embedding (``knowledge.vector_db.embedder``)."""
+
+    id: str = Field(
+        default="openai/text-embedding-v4",
+        description="LiteLLM embedding model id; empty api_key/api_base inherit llm",
+    )
+    api_key: str = Field(default="", description="API key; empty uses llm.api_key")
+    api_base: str = Field(default="https://dashscope.aliyuncs.com/compatible-mode/v1", description="API base; empty uses llm.api_base")
+    request_params: Optional[Dict[str, Any]] = Field(default=None, description="Extra litellm.embedding params")
+    enable_batch: bool = Field(default=False, description="Use batch async embedding when supported")
+    batch_size: int = Field(default=100, description="Batch size")
+
+
+class RerankerConfig(BaseModel):
+    """LiteLLM rerank (``knowledge.vector_db.reranker``)."""
+
+    model: str = Field(default="dashscope/qwen3-rerank", description="LiteLLM rerank model id")
+    api_key: str = Field(default="", description="API key; empty uses llm.api_key")
+    api_base: str = Field(default="https://dashscope.aliyuncs.com/compatible-api/v1/reranks", description="API base; empty uses llm.api_base")
+    top_n: Optional[int] = Field(default=None, description="Cap reranked results")
+    request_params: Optional[Dict[str, Any]] = Field(default=None, description="Extra litellm.rerank params")
+
+
+class ChromaConfig(BaseModel):
+    """Chroma vector store under ``knowledge.vector_db``."""
+
+    collection: str = Field(default="docs", description="Collection name")
+    name: str = Field(default="OpenFox Knowledge", description="Knowledge display name")
+    description: str = Field(default="OpenFox Knowledge", description="Description")
+    id: Optional[str] = Field(default=None, description="Optional Chroma instance id")
+    path: str = Field(
+        default="chromadb",
+        description="Storage path; relative paths resolve under ~/.openfox",
+    )
+    distance: Distance = Field(default=Distance.cosine, description="Distance metric")
+    persistent_client: bool = Field(default=False, description="Use Chroma persistent client")
+    search_type: SearchType = Field(default=SearchType.vector, description="vector | keyword | hybrid")
+    hybrid_rrf_k: int = Field(default=60, description="RRF k for hybrid search")
+    batch_size: Optional[int] = Field(default=None, description="Chroma batch size")
+    reranker_enabled: bool = Field(default=True, description="Attach LiteLLM reranker when true")
+    embedder: EmbedderConfig = Field(default_factory=EmbedderConfig, description="Embedder")
+    reranker: RerankerConfig = Field(default_factory=RerankerConfig, description="Reranker")
+
+
+class KnowledgeConfig(BaseModel):
+    """RAG / knowledge (active when ``search_knowledge`` is true)."""
+
+    vector_db: ChromaConfig = Field(default_factory=ChromaConfig, description="Chroma + embedder/reranker")
+    max_results: int = Field(default=10, description="Max chunks retrieved")
+    isolate_vector_search: bool = Field(default=False, description="Isolate search when sharing one vector DB")
 
 
 class ChannelsConfig(BaseSettings):
@@ -288,7 +344,9 @@ class Config(BaseSettings):
         description="Allowed CORS origins (default includes embedded /web on port 7777)",
     )
     time_zone: str = Field(default="Asia/Shanghai", description="Default timezone")
+    search_knowledge: bool = Field(default=False, description="Enable RAG (Chroma + Knowledge on the agent)")
     llm: LLMConfig = Field(default_factory=LLMConfig, description="LLM settings")
+    knowledge: KnowledgeConfig = Field(default_factory=KnowledgeConfig, description="Knowledge / vector DB settings")
     channels: ChannelsConfig = Field(default_factory=ChannelsConfig, description="Channel integrations")
     mcps: List[MCPServerConfig] = Field(default_factory=list, description="MCP server connections")
     tools: ToolsConfig = Field(default_factory=ToolsConfig, description="Tools settings")
