@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue"
+import * as monaco from "monaco-editor"
+import { computed, onMounted, ref, watch } from "vue"
 import { useI18n } from "vue-i18n"
 import { useDark } from "@vueuse/core"
 import { CodeEditor, type EditorOptions } from "monaco-editor-vue3"
@@ -33,6 +34,15 @@ const editorOptions: EditorOptions = {
   scrollBeyondLastLine: false,
   formatOnPaste: true,
 }
+
+/** monaco-editor-vue3 创建后不会响应 :theme 变化，需自行 setTheme */
+watch(
+  editorTheme,
+  (t) => {
+    monaco.editor.setTheme(t)
+  },
+  { flush: "post" },
+)
 
 function formatJson() {
   try {
@@ -205,7 +215,7 @@ onMounted(() => {
           {{ t("common.copy") }}
         </button>
       </nav>
-      <div class="min-h-0 flex-1 overflow-hidden bg-white dark:bg-[#1e1e1e]">
+      <div class="min-h-0 flex-1 overflow-hidden bg-background">
         <CodeEditor
           v-model:value="jsonText"
           language="json"
@@ -213,6 +223,7 @@ onMounted(() => {
           width="100%"
           height="100%"
           :options="editorOptions"
+          @editor-did-mount="monaco.editor.setTheme(editorTheme)"
         />
       </div>
     </div>

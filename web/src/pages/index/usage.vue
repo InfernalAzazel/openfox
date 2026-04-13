@@ -1,21 +1,16 @@
 <script setup lang="ts">
-import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-vue-next"
+import { VisAxis, VisGroupedBar, VisLine, VisStackedBar, VisXYContainer } from "@unovis/vue"
+import { useDark } from "@vueuse/core"
 import { computed, onMounted, ref, watch } from "vue"
 import { useI18n } from "vue-i18n"
-import { VisAxis, VisGroupedBar, VisLine, VisStackedBar, VisXYContainer } from "@unovis/vue"
 import { getAgentsAPI, getMetricsAPI, refreshMetricsAPI } from "@/api/os"
-import AppPageScaffold from "@/components/AppPageScaffold.vue"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import type { ChartConfig } from "@/components/ui/chart"
-import { ChartContainer } from "@/components/ui/chart"
 import { getAgentOsBaseUrl } from "@/composables/request"
 import { useAppState } from "@/composables/store"
-import { cn } from "@/lib/utils"
 import type { AgentDetails, AgentOsDayAggregatedMetrics } from "@/types/os"
 
 const { t, locale } = useI18n()
 const app = useAppState()
+const isDark = useDark()
 const agents = ref<AgentDetails[]>([])
 
 const METRICS_TABLE = "agno_metrics"
@@ -67,7 +62,6 @@ function shiftMonth(delta: number) {
   viewMonth.value = d
 }
 
-/** Database 全量 id（用于 title；无则显示 —） */
 const databaseMeta = computed(() => {
   const fullId = agents.value[0]?.db_id?.trim() || ""
   return {
@@ -76,27 +70,17 @@ const databaseMeta = computed(() => {
   }
 })
 
-/** 参考 UI：过长时前 28 字符 + `...`，完整 id 悬停见 title */
 const databaseIdEllipsis = computed(() => {
   const id = databaseMeta.value.fullId
-  if (id === "—") {
-    return id
-  }
+  if (id === "—") return id
   const max = 28
-  if (id.length <= max) {
-    return id
-  }
-  return `${id.slice(0, max)}...`
+  return id.length <= max ? id : `${id.slice(0, max)}...`
 })
 
 function formatCompact(n: number): string {
   const v = Math.abs(n)
-  if (v >= 1_000_000) {
-    return `${(n / 1_000_000).toFixed(1)}M`
-  }
-  if (v >= 1_000) {
-    return `${(n / 1_000).toFixed(1)}K`
-  }
+  if (v >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (v >= 1_000) return `${(n / 1_000).toFixed(1)}K`
   return String(Math.round(n))
 }
 
@@ -104,6 +88,30 @@ type UsageTokenRow = { day: number; t1: number; t2: number }
 type UsageUsersRow = { day: number; u: number }
 type UsageRunsRow = { day: number; r: number }
 type UsageSessionsRow = { day: number; s: number }
+
+/** Unovis 用固定 hex，需按主题切换，否则暗色下深灰条/线贴背景 */
+const chartAxisTickColor = computed(() =>
+  isDark.value ? "#a1a1aa" : "#737373",
+)
+
+const tokenStackBarColor = computed(
+  () => (_d: UsageTokenRow, i: number) =>
+    isDark.value
+      ? (i === 0 ? "#38bdf8" : "#94a3b8")
+      : (i === 0 ? "#404040" : "#a3a3a3"),
+)
+
+const usersBarColor = computed(() => () =>
+  isDark.value ? "#818cf8" : "#171717",
+)
+
+const runsLineColor = computed(() =>
+  isDark.value ? "#fb923c" : "#ea580c",
+)
+
+const sessionsLineColor = computed(() =>
+  isDark.value ? "#c084fc" : "#171717",
+)
 
 function ymdUTC(y: number, monthIndex: number, day: number): string {
   return `${y}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
@@ -118,13 +126,9 @@ function buildSeriesFromMetrics(
   type Agg = { t1: number; t2: number; u: number; r: number; s: number }
   const byDay = new Map<number, Agg>()
   for (const row of rows) {
-    if (!row.date) {
-      continue
-    }
+    if (!row.date) continue
     const d = new Date(row.date)
-    if (d.getUTCFullYear() !== y || d.getUTCMonth() !== monthIndex) {
-      continue
-    }
+    if (d.getUTCFullYear() !== y || d.getUTCMonth() !== monthIndex) continue
     const dom = d.getUTCDate()
     const tm = row.token_metrics
     const t1 = Number(tm?.input_tokens ?? 0)
@@ -135,11 +139,8 @@ function buildSeriesFromMetrics(
     const prev = byDay.get(dom)
     if (prev) {
       byDay.set(dom, {
-        t1: prev.t1 + t1,
-        t2: prev.t2 + t2,
-        u: prev.u + u,
-        r: prev.r + r,
-        s: prev.s + s,
+        t1: prev.t1 + t1, t2: prev.t2 + t2,
+        u: prev.u + u, r: prev.r + r, s: prev.s + s,
       })
     } else {
       byDay.set(dom, { t1, t2, u, r, s })
@@ -167,86 +168,40 @@ const series = computed(() => {
 
 const tokenYDomain = computed((): [number, number] => {
   let max = 0
-  for (const row of series.value.tokens) {
-    max = Math.max(max, row.t1 + row.t2)
-  }
-  const top = max <= 0 ? 100 : Math.ceil(max * 1.08)
-  return [0, top]
+  for (const row of series.value.tokens) max = Math.max(max, row.t1 + row.t2)
+  return [0, max <= 0 ? 100 : Math.ceil(max * 1.08)]
 })
 
 const usersYDomain = computed((): [number, number] => {
   let max = 0
-  for (const row of series.value.users) {
-    max = Math.max(max, row.u)
-  }
-  const top = max <= 0 ? 4 : Math.ceil(Math.max(4, max * 1.15))
-  return [0, top]
+  for (const row of series.value.users) max = Math.max(max, row.u)
+  return [0, max <= 0 ? 4 : Math.ceil(Math.max(4, max * 1.15))]
 })
 
 const runsYDomain = computed((): [number, number] => {
   let max = 0
-  for (const row of series.value.runs) {
-    max = Math.max(max, row.r)
-  }
-  const top = max <= 0 ? 8 : Math.ceil(Math.max(4, max * 1.15))
-  return [0, top]
+  for (const row of series.value.runs) max = Math.max(max, row.r)
+  return [0, max <= 0 ? 8 : Math.ceil(Math.max(4, max * 1.15))]
 })
 
 const sessionsYDomain = computed((): [number, number] => {
   let max = 0
-  for (const row of series.value.sessions) {
-    max = Math.max(max, row.s)
-  }
-  const top = max <= 0 ? 8 : Math.ceil(Math.max(4, max * 1.15))
-  return [0, top]
+  for (const row of series.value.sessions) max = Math.max(max, row.s)
+  return [0, max <= 0 ? 8 : Math.ceil(Math.max(4, max * 1.15))]
 })
 
 const totalTokens = computed(() =>
   series.value.tokens.reduce((a, row) => a + row.t1 + row.t2, 0),
 )
-
 const totalUsers = computed(() =>
   series.value.users.reduce((a, row) => a + row.u, 0),
 )
-
 const totalRuns = computed(() =>
   series.value.runs.reduce((a, row) => a + row.r, 0),
 )
-
 const totalSessions = computed(() =>
   series.value.sessions.reduce((a, row) => a + row.s, 0),
 )
-
-const tokensChartConfig = computed(() => {
-  void locale.value
-  return {
-    t1: { label: t("usage.chartInput"), color: "#404040" },
-    t2: { label: t("usage.chartOutput"), color: "#a3a3a3" },
-  } satisfies ChartConfig
-})
-
-const usersChartConfig = computed(() => {
-  void locale.value
-  return {
-    u: { label: t("usage.chartUsers"), color: "#171717" },
-  } satisfies ChartConfig
-})
-
-const runsChartConfig = computed(() => {
-  void locale.value
-  return {
-    r: { label: t("usage.chartRuns"), color: "#ea580c" },
-  } satisfies ChartConfig
-})
-
-const sessionsChartConfig = computed(() => {
-  void locale.value
-  return {
-    s: { label: t("usage.chartSessions"), color: "#171717" },
-  } satisfies ChartConfig
-})
-
-const chartBox = "aspect-auto h-[200px] w-full min-h-[180px]"
 
 const axisMuted =
   "[&_.tick_line]:stroke-border/40 [&_.grid_line]:stroke-border/25 [&_.domain_line]:stroke-border/30"
@@ -280,15 +235,10 @@ async function refreshMetricsAndReload() {
   const base = getAgentOsBaseUrl()
   const token = app.value.access_token?.trim()
   const dbId = agents.value[0]?.db_id?.trim()
-  if (!base || !token || refreshingMetrics.value) {
-    return
-  }
+  if (!base || !token || refreshingMetrics.value) return
   refreshingMetrics.value = true
   try {
-    await refreshMetricsAPI(base, token, {
-      db_id: dbId,
-      table: METRICS_TABLE,
-    })
+    await refreshMetricsAPI(base, token, { db_id: dbId, table: METRICS_TABLE })
     await loadMetrics()
   } finally {
     refreshingMetrics.value = false
@@ -296,443 +246,259 @@ async function refreshMetricsAndReload() {
 }
 
 watch(
-  () =>
-    [
-      viewMonth.value.getTime(),
-      app.value.access_token,
-      agents.value[0]?.db_id ?? "",
-    ] as const,
-  () => {
-    void loadMetrics()
-  },
+  () => [viewMonth.value.getTime(), app.value.access_token, agents.value[0]?.db_id ?? ""] as const,
+  () => { void loadMetrics() },
 )
 
 onMounted(async () => {
   const base = getAgentOsBaseUrl()
   const token = app.value.access_token?.trim()
-  if (!base || !token) {
-    return
-  }
+  if (!base || !token) return
   agents.value = await getAgentsAPI(base, token)
 })
+
+const chartCardUi = {
+  root: "gap-0 overflow-hidden rounded-lg py-0 shadow-none",
+  header: "border-b border-default px-4 py-3",
+  body: "px-2 py-2",
+}
 </script>
 
 <template>
-  <AppPageScaffold
-    content-class="px-3 py-5 sm:px-4 md:px-5"
-  >
-    <div class="w-full space-y-5 text-foreground sm:space-y-6">
+  <div class="flex min-h-0 flex-1 flex-col overflow-auto bg-background">
+    <div class="w-full space-y-5 p-4 text-foreground md:p-6">
+      <!-- 顶部 meta + 控件 -->
       <div
         class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
       >
         <div
           class="inline-grid min-w-0 shrink grid-cols-[auto_auto] grid-rows-[auto_auto] gap-x-3 gap-y-0.5 sm:gap-x-4"
         >
-          <span
-            class="col-start-1 row-start-1 text-xs leading-none text-muted-foreground"
-          >
+          <span class="col-start-1 row-start-1 text-xs leading-none text-muted-foreground">
             {{ t("common.metaDatabase") }}
           </span>
-          <span
-            class="col-start-2 row-start-1 text-xs leading-none text-muted-foreground"
-          >
+          <span class="col-start-2 row-start-1 text-xs leading-none text-muted-foreground">
             {{ t("common.metaTable") }}
           </span>
           <span
-            class="col-start-1 row-start-2 min-w-0 max-w-[min(100%,20rem)] font-mono text-sm leading-snug font-medium whitespace-nowrap text-foreground sm:max-w-[24rem]"
+            class="col-start-1 row-start-2 min-w-0 max-w-[min(100%,20rem)] font-mono text-sm leading-snug font-medium whitespace-nowrap sm:max-w-[24rem]"
             :title="databaseMeta.fullId !== '—' ? databaseMeta.fullId : undefined"
           >
             {{ databaseIdEllipsis }}
           </span>
-          <span
-            class="col-start-2 row-start-2 font-mono text-sm leading-snug font-medium whitespace-nowrap text-foreground"
-          >
+          <span class="col-start-2 row-start-2 font-mono text-sm leading-snug font-medium whitespace-nowrap">
             {{ databaseMeta.table }}
           </span>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2 md:justify-end">
-          <Button
+        <div
+          class="flex flex-wrap items-center gap-2 md:justify-end [&_button]:focus-visible:z-10"
+        >
+          <UButton
             variant="outline"
+            color="neutral"
             size="sm"
-            class="h-9 gap-1.5 border-border bg-card text-xs font-semibold uppercase tracking-wide"
-            type="button"
+            square
+            icon="i-lucide-refresh-cw"
+            :aria-label="t('usage.refreshMetricsTitle')"
             :title="t('usage.refreshMetricsTitle')"
             :disabled="refreshingMetrics || loadingMetrics"
+            :loading="refreshingMetrics"
             @click="void refreshMetricsAndReload()"
-          >
-            <RefreshCw
-              class="size-3.5 opacity-70"
-              :class="refreshingMetrics ? 'animate-spin' : ''"
-              aria-hidden="true"
-            />
-            {{ t("usage.refreshMetrics") }}
-          </Button>
+          />
 
+          <!-- 单一边框 + divide-x：避免内层 outline 与外壳叠成双线条；内侧 ghost 与左侧独立 outline 刷新形成「主按钮 + 成组控件」层次 -->
           <div
-            class="flex items-center rounded-md border border-border bg-muted/50 dark:bg-muted/30"
+            class="inline-flex shrink-0 items-center divide-x divide-default overflow-hidden rounded-md border border-default bg-background"
           >
-            <Button
+            <UButton
               variant="ghost"
-              size="icon"
-              class="h-9 w-9 shrink-0 rounded-none rounded-l-md"
-              type="button"
+              color="neutral"
+              size="sm"
+              square
+              class="rounded-none"
+              icon="i-lucide-chevron-left"
               :aria-label="t('usage.prevMonth')"
+              :title="t('usage.prevMonth')"
               @click="shiftMonth(-1)"
-            >
-              <ChevronLeft class="size-4" />
-            </Button>
+            />
             <span
-              class="min-w-26 select-none px-1 py-2 text-center text-xs font-semibold tabular-nums tracking-wide text-foreground"
+              class="flex min-w-28 max-w-[11rem] shrink-0 select-none items-center justify-center bg-background px-2.5 text-center text-xs font-medium tabular-nums text-foreground sm:min-w-32 sm:max-w-[13rem]"
             >
               {{ monthLabel }}
             </span>
-            <Button
+            <UButton
               variant="ghost"
-              size="icon"
-              class="h-9 w-9 shrink-0 rounded-none rounded-r-md"
-              type="button"
+              color="neutral"
+              size="sm"
+              square
+              class="rounded-none"
+              icon="i-lucide-chevron-right"
               :aria-label="t('usage.nextMonth')"
+              :title="t('usage.nextMonth')"
               @click="shiftMonth(1)"
-            >
-              <ChevronRight class="size-4" />
-            </Button>
+            />
           </div>
         </div>
       </div>
 
-      <div
-        class="rounded-xl border border-border bg-card px-4 py-4 shadow-sm sm:px-5"
-      >
+      <!-- 图表 2×2 -->
+      <div class="rounded-xl border border-default bg-default p-4 shadow-sm sm:p-5">
         <div class="grid gap-4 sm:grid-cols-2">
-          <!-- Total tokens -->
-          <Card
-            :class="
-              cn(
-                'gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none',
-              )
-            "
-          >
-            <div
-              class="flex items-start justify-between gap-3 border-b border-border px-4 py-3"
-            >
-              <span class="text-sm text-muted-foreground">{{ t("usage.cardTotalTokens") }}</span>
-              <div class="flex items-center gap-1">
-                <span class="text-lg font-semibold tabular-nums tracking-tight">
-                  {{ formatCompact(totalTokens) }}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  class="h-8 w-8 text-muted-foreground hover:text-foreground"
-                  type="button"
-                  :title="t('usage.refreshCardTitle')"
-                  :aria-label="t('usage.refreshCardTitle')"
-                  :disabled="refreshingMetrics || loadingMetrics"
-                  @click="void refreshMetricsAndReload()"
-                >
-                  <RefreshCw
-                    class="size-3.5"
-                    :class="refreshingMetrics ? 'animate-spin' : ''"
+          <!-- Total Tokens -->
+          <UCard :ui="chartCardUi">
+            <template #header>
+              <div class="flex items-start justify-between gap-3">
+                <span class="text-sm text-muted-foreground">{{ t("usage.cardTotalTokens") }}</span>
+                <div class="flex items-center gap-1">
+                  <span class="text-lg font-semibold tabular-nums tracking-tight">
+                    {{ formatCompact(totalTokens) }}
+                  </span>
+                  <UButton
+                    variant="ghost"
+                    color="neutral"
+                    square
+                    class="size-8"
+                    icon="i-lucide-refresh-cw"
+                    :title="t('usage.refreshCardTitle')"
+                    :disabled="refreshingMetrics || loadingMetrics"
+                    :loading="refreshingMetrics"
+                    @click="void refreshMetricsAndReload()"
                   />
-                </Button>
+                </div>
               </div>
-            </div>
-            <CardContent class="px-2 pb-3 pt-2">
-              <ChartContainer
-                :config="tokensChartConfig"
-                :class="chartBox"
-                :cursor="false"
+            </template>
+
+            <div class="aspect-auto h-[200px] w-full min-h-[180px]">
+              <VisXYContainer
+                :data="series.tokens"
+                :margin="{ left: 8, right: 8, top: 8, bottom: 28 }"
+                :x-domain="xDomain"
+                :y-domain="tokenYDomain"
               >
-                <VisXYContainer
-                  :data="series.tokens"
-                  :margin="{ left: 8, right: 8, top: 8, bottom: 28 }"
-                  :x-domain="xDomain"
-                  :y-domain="tokenYDomain"
-                >
-                  <VisStackedBar
-                    :x="(d: UsageTokenRow) => d.day"
-                    :y="[(d: UsageTokenRow) => d.t1, (d: UsageTokenRow) => d.t2]"
-                    :data-step="1"
-                    :bar-padding="0.35"
-                    :color="(_d: UsageTokenRow, i: number) => (i === 0 ? '#404040' : '#a3a3a3')"
-                    :rounded-corners="2"
-                  />
-                  <VisAxis
-                    type="x"
-                    :x="(d: UsageTokenRow) => d.day"
-                    :tick-line="false"
-                    :domain-line="false"
-                    :grid-line="false"
-                    :tick-values="xTickValues"
-                    :tick-format="(n: number) => String(n)"
-                    :num-ticks="xTickValues.length"
-                    :tick-text-font-size="'11px'"
-                    :tick-text-color="'#737373'"
-                    :class="axisMuted"
-                  />
-                  <VisAxis
-                    type="y"
-                    :num-ticks="4"
-                    :tick-line="false"
-                    :domain-line="false"
-                    :grid-line="true"
-                    :tick-format="
-                      (n: number) =>
-                        n >= 1000 ? `${Math.round(n / 1000)}K` : String(n)
-                    "
-                    :tick-text-font-size="'11px'"
-                    :tick-text-color="'#737373'"
-                    :class="axisMuted"
-                  />
-                </VisXYContainer>
-              </ChartContainer>
-            </CardContent>
-          </Card>
+                <VisStackedBar
+                  :x="(d: UsageTokenRow) => d.day"
+                  :y="[(d: UsageTokenRow) => d.t1, (d: UsageTokenRow) => d.t2]"
+                  :data-step="1"
+                  :bar-padding="0.35"
+                  :color="tokenStackBarColor"
+                  :rounded-corners="2"
+                />
+                <VisAxis type="x" :x="(d: UsageTokenRow) => d.day" :tick-line="false" :domain-line="false" :grid-line="false" :tick-values="xTickValues" :tick-format="(n: number) => String(n)" :num-ticks="xTickValues.length" :tick-text-font-size="'11px'" :tick-text-color="chartAxisTickColor" :class="axisMuted" />
+                <VisAxis type="y" :num-ticks="4" :tick-line="false" :domain-line="false" :grid-line="true" :tick-format="(n: number) => n >= 1000 ? `${Math.round(n / 1000)}K` : String(n)" :tick-text-font-size="'11px'" :tick-text-color="chartAxisTickColor" :class="axisMuted" />
+              </VisXYContainer>
+            </div>
+          </UCard>
 
           <!-- Users -->
-          <Card
-            :class="
-              cn(
-                'gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none',
-              )
-            "
-          >
-            <div
-              class="flex items-start justify-between gap-3 border-b border-border px-4 py-3"
-            >
-              <span class="text-sm text-muted-foreground">{{ t("usage.cardUsers") }}</span>
-              <div class="flex items-center gap-1">
-                <span class="text-lg font-semibold tabular-nums tracking-tight">
-                  {{ totalUsers }}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  class="h-8 w-8 text-muted-foreground hover:text-foreground"
-                  type="button"
-                  :title="t('usage.refreshCardTitle')"
-                  :aria-label="t('usage.refreshCardTitle')"
-                  :disabled="refreshingMetrics || loadingMetrics"
-                  @click="void refreshMetricsAndReload()"
-                >
-                  <RefreshCw
-                    class="size-3.5"
-                    :class="refreshingMetrics ? 'animate-spin' : ''"
+          <UCard :ui="chartCardUi">
+            <template #header>
+              <div class="flex items-start justify-between gap-3">
+                <span class="text-sm text-muted-foreground">{{ t("usage.cardUsers") }}</span>
+                <div class="flex items-center gap-1">
+                  <span class="text-lg font-semibold tabular-nums tracking-tight">{{ totalUsers }}</span>
+                  <UButton
+                    variant="ghost"
+                    color="neutral"
+                    square
+                    class="size-8"
+                    icon="i-lucide-refresh-cw"
+                    :title="t('usage.refreshCardTitle')"
+                    :disabled="refreshingMetrics || loadingMetrics"
+                    :loading="refreshingMetrics"
+                    @click="void refreshMetricsAndReload()"
                   />
-                </Button>
+                </div>
               </div>
-            </div>
-            <CardContent class="px-2 pb-3 pt-2">
-              <ChartContainer
-                :config="usersChartConfig"
-                :class="chartBox"
-                :cursor="false"
+            </template>
+
+            <div class="aspect-auto h-[200px] w-full min-h-[180px]">
+              <VisXYContainer
+                :data="series.users"
+                :margin="{ left: 8, right: 8, top: 8, bottom: 28 }"
+                :x-domain="xDomain"
+                :y-domain="usersYDomain"
               >
-                <VisXYContainer
-                  :data="series.users"
-                  :margin="{ left: 8, right: 8, top: 8, bottom: 28 }"
-                  :x-domain="xDomain"
-                  :y-domain="usersYDomain"
-                >
-                  <VisGroupedBar
-                    :x="(d: UsageUsersRow) => d.day"
-                    :y="[(d: UsageUsersRow) => d.u]"
-                    :data-step="1"
-                    :group-padding="0.35"
-                    :color="() => '#171717'"
-                    :rounded-corners="1"
-                  />
-                  <VisAxis
-                    type="x"
-                    :x="(d: UsageUsersRow) => d.day"
-                    :tick-line="false"
-                    :domain-line="false"
-                    :grid-line="false"
-                    :tick-values="xTickValues"
-                    :tick-format="(n: number) => String(n)"
-                    :num-ticks="xTickValues.length"
-                    :tick-text-font-size="'11px'"
-                    :tick-text-color="'#737373'"
-                    :class="axisMuted"
-                  />
-                  <VisAxis
-                    type="y"
-                    :num-ticks="3"
-                    :tick-line="false"
-                    :domain-line="false"
-                    :grid-line="true"
-                    :tick-format="(n: number) => String(Math.round(n))"
-                    :tick-text-font-size="'11px'"
-                    :tick-text-color="'#737373'"
-                    :class="axisMuted"
-                  />
-                </VisXYContainer>
-              </ChartContainer>
-            </CardContent>
-          </Card>
+                <VisGroupedBar :x="(d: UsageUsersRow) => d.day" :y="[(d: UsageUsersRow) => d.u]" :data-step="1" :group-padding="0.35" :color="usersBarColor" :rounded-corners="1" />
+                <VisAxis type="x" :x="(d: UsageUsersRow) => d.day" :tick-line="false" :domain-line="false" :grid-line="false" :tick-values="xTickValues" :tick-format="(n: number) => String(n)" :num-ticks="xTickValues.length" :tick-text-font-size="'11px'" :tick-text-color="chartAxisTickColor" :class="axisMuted" />
+                <VisAxis type="y" :num-ticks="3" :tick-line="false" :domain-line="false" :grid-line="true" :tick-format="(n: number) => String(Math.round(n))" :tick-text-font-size="'11px'" :tick-text-color="chartAxisTickColor" :class="axisMuted" />
+              </VisXYContainer>
+            </div>
+          </UCard>
 
           <!-- Agent Runs -->
-          <Card
-            :class="
-              cn(
-                'gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none',
-              )
-            "
-          >
-            <div
-              class="flex items-start justify-between gap-3 border-b border-border px-4 py-3"
-            >
-              <span class="text-sm text-muted-foreground">{{ t("usage.cardAgentRuns") }}</span>
-              <div class="flex items-center gap-1">
-                <span class="text-lg font-semibold tabular-nums tracking-tight">
-                  {{ totalRuns }}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  class="h-8 w-8 text-muted-foreground hover:text-foreground"
-                  type="button"
-                  :title="t('usage.refreshCardTitle')"
-                  :aria-label="t('usage.refreshCardTitle')"
-                  :disabled="refreshingMetrics || loadingMetrics"
-                  @click="void refreshMetricsAndReload()"
-                >
-                  <RefreshCw
-                    class="size-3.5"
-                    :class="refreshingMetrics ? 'animate-spin' : ''"
+          <UCard :ui="chartCardUi">
+            <template #header>
+              <div class="flex items-start justify-between gap-3">
+                <span class="text-sm text-muted-foreground">{{ t("usage.cardAgentRuns") }}</span>
+                <div class="flex items-center gap-1">
+                  <span class="text-lg font-semibold tabular-nums tracking-tight">{{ totalRuns }}</span>
+                  <UButton
+                    variant="ghost"
+                    color="neutral"
+                    square
+                    class="size-8"
+                    icon="i-lucide-refresh-cw"
+                    :title="t('usage.refreshCardTitle')"
+                    :disabled="refreshingMetrics || loadingMetrics"
+                    :loading="refreshingMetrics"
+                    @click="void refreshMetricsAndReload()"
                   />
-                </Button>
+                </div>
               </div>
-            </div>
-            <CardContent class="px-2 pb-3 pt-2">
-              <ChartContainer
-                :config="runsChartConfig"
-                :class="chartBox"
-                :cursor="true"
+            </template>
+
+            <div class="aspect-auto h-[200px] w-full min-h-[180px]">
+              <VisXYContainer
+                :data="series.runs"
+                :margin="{ left: 8, right: 8, top: 8, bottom: 28 }"
+                :x-domain="xDomain"
+                :y-domain="runsYDomain"
               >
-                <VisXYContainer
-                  :data="series.runs"
-                  :margin="{ left: 8, right: 8, top: 8, bottom: 28 }"
-                  :x-domain="xDomain"
-                  :y-domain="runsYDomain"
-                >
-                  <VisLine
-                    :x="(d: UsageRunsRow) => d.day"
-                    :y="(d: UsageRunsRow) => d.r"
-                    :color="'#ea580c'"
-                    :line-width="2"
-                  />
-                  <VisAxis
-                    type="x"
-                    :x="(d: UsageRunsRow) => d.day"
-                    :tick-line="false"
-                    :domain-line="false"
-                    :grid-line="false"
-                    :tick-values="xTickValues"
-                    :tick-format="(n: number) => String(n)"
-                    :num-ticks="xTickValues.length"
-                    :tick-text-font-size="'11px'"
-                    :tick-text-color="'#737373'"
-                    :class="axisMuted"
-                  />
-                  <VisAxis
-                    type="y"
-                    :num-ticks="4"
-                    :tick-line="false"
-                    :domain-line="false"
-                    :grid-line="true"
-                    :tick-format="(n: number) => String(Math.round(n))"
-                    :tick-text-font-size="'11px'"
-                    :tick-text-color="'#737373'"
-                    :class="axisMuted"
-                  />
-                </VisXYContainer>
-              </ChartContainer>
-            </CardContent>
-          </Card>
+                <VisLine :x="(d: UsageRunsRow) => d.day" :y="(d: UsageRunsRow) => d.r" :color="runsLineColor" :line-width="2" />
+                <VisAxis type="x" :x="(d: UsageRunsRow) => d.day" :tick-line="false" :domain-line="false" :grid-line="false" :tick-values="xTickValues" :tick-format="(n: number) => String(n)" :num-ticks="xTickValues.length" :tick-text-font-size="'11px'" :tick-text-color="chartAxisTickColor" :class="axisMuted" />
+                <VisAxis type="y" :num-ticks="4" :tick-line="false" :domain-line="false" :grid-line="true" :tick-format="(n: number) => String(Math.round(n))" :tick-text-font-size="'11px'" :tick-text-color="chartAxisTickColor" :class="axisMuted" />
+              </VisXYContainer>
+            </div>
+          </UCard>
 
           <!-- Agent Sessions -->
-          <Card
-            :class="
-              cn(
-                'gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none',
-              )
-            "
-          >
-            <div
-              class="flex items-start justify-between gap-3 border-b border-border px-4 py-3"
-            >
-              <span class="text-sm text-muted-foreground">{{ t("usage.cardAgentSessions") }}</span>
-              <div class="flex items-center gap-1">
-                <span class="text-lg font-semibold tabular-nums tracking-tight">
-                  {{ totalSessions }}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  class="h-8 w-8 text-muted-foreground hover:text-foreground"
-                  type="button"
-                  :title="t('usage.refreshCardTitle')"
-                  :aria-label="t('usage.refreshCardTitle')"
-                  :disabled="refreshingMetrics || loadingMetrics"
-                  @click="void refreshMetricsAndReload()"
-                >
-                  <RefreshCw
-                    class="size-3.5"
-                    :class="refreshingMetrics ? 'animate-spin' : ''"
+          <UCard :ui="chartCardUi">
+            <template #header>
+              <div class="flex items-start justify-between gap-3">
+                <span class="text-sm text-muted-foreground">{{ t("usage.cardAgentSessions") }}</span>
+                <div class="flex items-center gap-1">
+                  <span class="text-lg font-semibold tabular-nums tracking-tight">{{ totalSessions }}</span>
+                  <UButton
+                    variant="ghost"
+                    color="neutral"
+                    square
+                    class="size-8"
+                    icon="i-lucide-refresh-cw"
+                    :title="t('usage.refreshCardTitle')"
+                    :disabled="refreshingMetrics || loadingMetrics"
+                    :loading="refreshingMetrics"
+                    @click="void refreshMetricsAndReload()"
                   />
-                </Button>
+                </div>
               </div>
-            </div>
-            <CardContent class="px-2 pb-3 pt-2">
-              <ChartContainer
-                :config="sessionsChartConfig"
-                :class="chartBox"
-                :cursor="false"
+            </template>
+
+            <div class="aspect-auto h-[200px] w-full min-h-[180px]">
+              <VisXYContainer
+                :data="series.sessions"
+                :margin="{ left: 8, right: 8, top: 8, bottom: 28 }"
+                :x-domain="xDomain"
+                :y-domain="sessionsYDomain"
               >
-                <VisXYContainer
-                  :data="series.sessions"
-                  :margin="{ left: 8, right: 8, top: 8, bottom: 28 }"
-                  :x-domain="xDomain"
-                  :y-domain="sessionsYDomain"
-                >
-                  <VisLine
-                    :x="(d: UsageSessionsRow) => d.day"
-                    :y="(d: UsageSessionsRow) => d.s"
-                    :color="'#171717'"
-                    :line-width="2"
-                  />
-                  <VisAxis
-                    type="x"
-                    :x="(d: UsageSessionsRow) => d.day"
-                    :tick-line="false"
-                    :domain-line="false"
-                    :grid-line="false"
-                    :tick-values="xTickValues"
-                    :tick-format="(n: number) => String(n)"
-                    :num-ticks="xTickValues.length"
-                    :tick-text-font-size="'11px'"
-                    :tick-text-color="'#737373'"
-                    :class="axisMuted"
-                  />
-                  <VisAxis
-                    type="y"
-                    :num-ticks="3"
-                    :tick-line="false"
-                    :domain-line="false"
-                    :grid-line="true"
-                    :tick-format="(n: number) => String(Math.round(n))"
-                    :tick-text-font-size="'11px'"
-                    :tick-text-color="'#737373'"
-                    :class="axisMuted"
-                  />
-                </VisXYContainer>
-              </ChartContainer>
-            </CardContent>
-          </Card>
+                <VisLine :x="(d: UsageSessionsRow) => d.day" :y="(d: UsageSessionsRow) => d.s" :color="sessionsLineColor" :line-width="2" />
+                <VisAxis type="x" :x="(d: UsageSessionsRow) => d.day" :tick-line="false" :domain-line="false" :grid-line="false" :tick-values="xTickValues" :tick-format="(n: number) => String(n)" :num-ticks="xTickValues.length" :tick-text-font-size="'11px'" :tick-text-color="chartAxisTickColor" :class="axisMuted" />
+                <VisAxis type="y" :num-ticks="3" :tick-line="false" :domain-line="false" :grid-line="true" :tick-format="(n: number) => String(Math.round(n))" :tick-text-font-size="'11px'" :tick-text-color="chartAxisTickColor" :class="axisMuted" />
+              </VisXYContainer>
+            </div>
+          </UCard>
         </div>
       </div>
     </div>
-  </AppPageScaffold>
+  </div>
 </template>

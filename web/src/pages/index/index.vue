@@ -1,13 +1,4 @@
 <script setup lang="ts">
-import {
-  IconDownload,
-  IconLoader2,
-  IconRefresh,
-  IconSend,
-  IconStar,
-  IconTool,
-  IconUser,
-} from "@tabler/icons-vue"
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue"
 import { useI18n } from "vue-i18n"
 import {
@@ -37,21 +28,6 @@ import {
 } from "@/lib/exportChatMarkdown"
 import { renderChatMarkdown } from "@/lib/markdown"
 import type { AgentDetails, ChatMessage, SessionEntry } from "@/types/os"
-import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
-import { Textarea } from "@/components/ui/textarea"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 
 const { t } = useI18n()
 const app = useAppState()
@@ -80,29 +56,76 @@ const selectedAgent = computed(() =>
   agents.value.find((a) => a.id === selectedAgentId.value),
 )
 
+const sessionSelectItems = computed(() =>
+  sessions.value.map((s) => ({
+    value: s.session_id,
+    label: s.session_name || s.session_id,
+  })),
+)
+
+const agentSelectItems = computed(() =>
+  agents.value.map((a) => ({
+    value: a.id,
+    label: a.name || a.id,
+  })),
+)
+
+/** 供 Nuxt UI UChatMessages 使用（需 id / role / parts；与 @ai-sdk/vue 的 UIMessage 形状对齐） */
+interface UiChatRow {
+  id: string
+  role: "user" | "assistant"
+  parts: { type: "text"; text?: string }[]
+  metadata: { raw: ChatMessage; index: number }
+  variant?: string
+  ui?: Record<string, string>
+}
+
 const messages = ref<ChatMessage[]>([])
-/** 聊天记录区域原生滚动容器（不用 reka ScrollArea：:flex 链未截住高度时视口不会产生内部滚动，scrollTop 无效） */
+
+const uiMessages = computed<UiChatRow[]>(() =>
+  messages.value.map((raw, index) => {
+    const id = `m-${raw.role}-${raw.created_at}-${index}`
+    const base: UiChatRow = {
+      id,
+      role: raw.role === "user" ? "user" : "assistant",
+      parts: [],
+      metadata: { raw, index },
+    }
+    if (raw.role === "agent" && raw.tool_calls?.length) {
+      return {
+        ...base,
+        variant: "naked",
+        ui: {
+          root: "w-full max-w-none",
+          container: "max-w-none w-full",
+          leading: "!hidden",
+        },
+      }
+    }
+    if (raw.role === "tool") {
+      return {
+        ...base,
+        ui: { root: "opacity-95" },
+      }
+    }
+    return base
+  }),
+)
+
+/** UChatMessages / UChatPromptSubmit：与 AI SDK 的 chat.status 命名一致 */
+const chatMessagesStatus = computed(() =>
+  sending.value ? "submitted" : "ready",
+)
+
+/** 聊天记录区域原生滚动容器（:flex 链需 min-h-0 + overflow 才有可滚动高度） */
 const chatScrollViewportRef = ref<HTMLElement | null>(null)
-/** 聊天记录底部锚点 */
-const chatScrollEndRef = ref<HTMLElement | null>(null)
 
 function applyChatScrollToBottom() {
   const vp = chatScrollViewportRef.value
-  const end = chatScrollEndRef.value
-  if (!vp || !end) return
-
-  /** 只滚消息区域，不用 scrollIntoView（会带动外层，顶栏/会话条会跟着跑） */
+  if (!vp) return
   const align = () => {
     vp.scrollTop = vp.scrollHeight
-    const vr = vp.getBoundingClientRect()
-    const er = end.getBoundingClientRect()
-    const gap = er.bottom - vr.bottom
-    if (gap > 0.5) {
-      const maxTop = Math.max(0, vp.scrollHeight - vp.clientHeight)
-      vp.scrollTop = Math.min(vp.scrollTop + gap, maxTop)
-    }
   }
-
   align()
   requestAnimationFrame(() => {
     align()
@@ -132,11 +155,10 @@ function teardownChatColumnResizeObserver() {
 }
 
 watch(
-  () => chatScrollEndRef.value,
-  (end) => {
+  () => chatScrollViewportRef.value,
+  (vp) => {
     teardownChatColumnResizeObserver()
-    const col = end?.parentElement
-    if (!col) return
+    if (!vp) return
     chatColumnResizeRo = new ResizeObserver(() => {
       if (loadingHistory.value) return
       cancelAnimationFrame(chatColumnResizeRaf)
@@ -144,7 +166,7 @@ watch(
         applyChatScrollToBottom()
       })
     })
-    chatColumnResizeRo.observe(col)
+    chatColumnResizeRo.observe(vp)
   },
   { flush: "post", immediate: true },
 )
@@ -264,14 +286,14 @@ async function sendMessage() {
       },
       token,
     )
-    const { text: reply, sessionId: returnedSid, toolCalls } =
+    const { text: reply, sessionId: returnedSid, toolCalls, toolOutputs } =
       parseAgentRunResult(raw)
     const content =
       reply || (!toolCalls?.length ? t("chat.emptyReply") : "")
     const createdAt = nowTs()
     /** 必须先插入带 tool_calls 的消息，再更新 sessionChoice，否则 watcher 会清空列表并用不完整的历史覆盖 */
     messages.value.push(
-      agentReplyToChatMessage("", toolCalls, createdAt),
+      agentReplyToChatMessage("", toolCalls, createdAt, toolOutputs),
     )
     const idx = messages.value.length - 1
     if (returnedSid) {
@@ -418,247 +440,240 @@ function downloadCurrentChatMarkdown() {
   const stamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-")
   triggerDownloadMarkdown(`openfox-${seg}-${stamp}.md`, md)
 }
+
+function onChatPromptSubmit() {
+  void sendMessage()
+}
+
+function onChatPromptStop() {
+  cancelAgentTypewriter?.()
+  cancelAgentTypewriter = null
+}
+
+function isAgentToolCallsRow(row: UiChatRow) {
+  const r = row.metadata.raw
+  return r.role === "agent" && !!r.tool_calls?.length
+}
 </script>
 
 <template>
   <div class="flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
       <!-- 会话 / 模型：与全局顶栏一并固定在视口内，不参与外层滚动 -->
       <div
-        class="z-10 flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-background/95 px-3 py-2.5 backdrop-blur-md md:px-5"
+        class="z-10 flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-background/95 px-3 py-1.5 backdrop-blur-md md:px-5"
       >
-        <Select
+        <USelect
           v-model="sessionChoice"
+          :items="sessionSelectItems"
+          :placeholder="
+            sessions.length
+              ? t('chat.selectSessionPlaceholder')
+              : t('chat.noSessionPlaceholder')
+          "
           :disabled="loadingSessions || loadingHistory || !sessions.length"
-        >
-          <SelectTrigger
-            class="h-10 min-w-0 flex-1 rounded-xl border-border bg-card text-sm shadow-sm md:max-w-[min(100%,22rem)]"
-          >
-            <SelectValue
-              :placeholder="
-                sessions.length
-                  ? t('chat.selectSessionPlaceholder')
-                  : t('chat.noSessionPlaceholder')
-              "
-            />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem
-              v-for="s in sessions"
-              :key="s.session_id"
-              :value="s.session_id"
-            >
-              {{ s.session_name || s.session_id }}
-            </SelectItem>
-          </SelectContent>
-        </Select>
-        <Select v-model="selectedAgentId">
-          <SelectTrigger
-            class="h-10 min-w-0 flex-1 rounded-xl border-border bg-card text-sm shadow-sm md:max-w-[min(100%,20rem)]"
-            :disabled="loadingAgents || !agents.length"
-          >
-            <SelectValue placeholder="Agent" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem
-              v-for="a in agents"
-              :key="a.id"
-              :value="a.id"
-            >
-              {{ a.name || a.id }}
-            </SelectItem>
-          </SelectContent>
-        </Select>
+          :loading="loadingSessions"
+          size="md"
+          class="h-10 min-w-0 flex-1 md:max-w-[min(100%,22rem)]"
+          :ui="{ base: 'rounded-xl shadow-sm' }"
+        />
+        <USelect
+          v-model="selectedAgentId"
+          :items="agentSelectItems"
+          placeholder="Agent"
+          :disabled="loadingAgents || !agents.length"
+          :loading="loadingAgents"
+          size="md"
+          class="h-10 min-w-0 flex-1 md:max-w-[min(100%,20rem)]"
+          :ui="{ base: 'rounded-xl shadow-sm' }"
+        />
         <p
           v-if="selectedAgent?.model"
           class="hidden w-full text-xs text-muted-foreground md:block md:max-w-[min(100%,20rem)] md:flex-none"
         >
           {{ selectedAgent.model.model }} · {{ selectedAgent.model.provider }}
         </p>
-        <Separator orientation="vertical" class="hidden h-8 md:block" />
+        <USeparator orientation="vertical" class="hidden h-8 md:block" />
         <div class="flex w-full items-center justify-end gap-1.5 sm:ml-auto sm:w-auto">
-          <Button
+          <UButton
             variant="outline"
-            size="icon"
-            class="size-10 rounded-xl border-border bg-card shadow-sm"
+            color="neutral"
+            square
+            size="sm"
+            icon="i-lucide-refresh-cw"
             :title="t('chat.refreshMeta')"
             :disabled="loadingAgents || loadingSessions"
             @click="void refreshChatMeta()"
-          >
-            <IconRefresh class="size-4 text-muted-foreground" />
-          </Button>
+          />
         </div>
       </div>
 
-      <!-- 消息：原生 overflow-y-auto，保证在 flex 布局下一定有可滚动高度 -->
       <div
         ref="chatScrollViewportRef"
-        class="min-h-0 flex-1 basis-0 overflow-y-auto overscroll-y-contain px-3 pb-5 pt-5 md:px-6"
+        class="min-h-0 flex-1 basis-0 overflow-y-auto overscroll-y-contain px-3 pb-5 pt-3 md:px-6"
       >
         <div class="mx-auto flex max-w-3xl flex-col gap-5">
-          <p
+          <UAlert
             v-if="loadingHistory"
-            class="rounded-lg border border-dashed border-border bg-muted/40 px-4 py-6 text-center text-sm text-muted-foreground dark:bg-muted/30"
+            color="neutral"
+            variant="subtle"
+            class="justify-center text-center"
+            :description="t('chat.loadingHistory')"
+          />
+          <UChatMessages
+            :messages="uiMessages"
+            :status="chatMessagesStatus"
+            :should-auto-scroll="false"
+            should-scroll-to-bottom
+            class="min-h-0"
+            :user="{ side: 'right', variant: 'naked' }"
+            :assistant="{ side: 'left', variant: 'naked' }"
           >
-            {{ t("chat.loadingHistory") }}
-          </p>
-          <div
-            v-for="(msg, i) in messages"
-            :key="`${msg.role}-${msg.created_at}-${i}`"
-            class="flex gap-3"
-            :class="[
-              msg.role === 'tool' ? 'opacity-95' : '',
-              msg.role === 'user' ? 'flex-row-reverse' : '',
-            ]"
-          >
-            <template
-              v-if="msg.role === 'agent' && msg.tool_calls?.length"
-            >
-              <div class="min-w-0 flex-1 space-y-2">
+            <template #leading="{ message }">
+              <template v-if="!isAgentToolCallsRow(message)">
                 <div
-                  class="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-x-3 gap-y-2"
+                  v-if="message.metadata.raw.role === 'user'"
+                  class="flex size-9 shrink-0 items-center justify-center self-start rounded-xl border border-default bg-elevated shadow-sm"
                 >
-                  <div
-                    class="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl border border-border bg-card shadow-sm"
-                  >
-                    <IconTool class="size-4 text-muted-foreground" />
-                  </div>
-                  <ChatToolCallsCard :tool-calls="msg.tool_calls" />
-                  <template v-if="msg.content.trim()">
-                    <div
-                      class="flex size-9 shrink-0 items-center justify-center rounded-xl border border-border bg-card shadow-sm"
-                    >
-                      <IconStar class="size-4 text-amber-500" />
-                    </div>
-                    <div
-                      class="min-w-0 rounded-xl border border-border bg-card px-4 py-3.5 text-[13px] leading-relaxed text-foreground shadow-sm"
-                    >
-                      <div
-                        class="chat-md min-w-0 text-left [&_a]:break-all [&_img]:max-w-full [&_img]:h-auto"
-                        v-html="renderChatMarkdown(msg.content)"
-                      />
-                    </div>
-                  </template>
+                  <UIcon
+                    name="i-lucide-user"
+                    class="size-4 text-sky-600 dark:text-sky-400"
+                  />
                 </div>
-              </div>
-            </template>
-            <template v-else>
-              <div
-                class="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl border border-border bg-card shadow-sm"
-              >
-                <IconUser
-                  v-if="msg.role === 'user'"
-                  class="size-4 text-sky-600 dark:text-sky-400"
-                />
-                <IconStar
-                  v-else-if="msg.role === 'agent'"
+                <UIcon
+                  v-else-if="message.metadata.raw.role === 'agent'"
+                  name="i-lucide-star"
                   class="size-4 text-amber-500"
                 />
-                <IconTool v-else class="size-4 text-muted-foreground" />
-              </div>
-              <div
-                class="min-w-0 space-y-2"
-                :class="msg.role === 'user' ? 'flex-1 text-right' : 'flex-1'"
-              >
+                <UIcon
+                  v-else
+                  name="i-lucide-wrench"
+                  class="size-4 text-muted-foreground"
+                />
+              </template>
+            </template>
+            <template #content="{ message }">
+              <template v-if="isAgentToolCallsRow(message)">
+                <div class="min-w-0 flex-1 space-y-2">
+                  <div
+                    class="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-x-3 gap-y-2"
+                  >
+                    <div
+                      class="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl border border-border bg-card shadow-sm"
+                    >
+                      <UIcon name="i-lucide-wrench" class="size-4 text-muted-foreground" />
+                    </div>
+                    <ChatToolCallsCard
+                      :tool-calls="message.metadata.raw.tool_calls!"
+                    />
+                    <template v-if="message.metadata.raw.content.trim()">
+                      <div
+                        class="flex size-9 shrink-0 items-center justify-center rounded-xl border border-border bg-card shadow-sm"
+                      >
+                        <UIcon name="i-lucide-star" class="size-4 text-amber-500" />
+                      </div>
+                      <div
+                        class="min-w-0 rounded-xl border border-border bg-card px-4 py-3.5 text-[13px] leading-relaxed text-foreground shadow-sm"
+                      >
+                        <div
+                          class="chat-md min-w-0 text-left [&_a]:break-all [&_img]:max-w-full [&_img]:h-auto"
+                          v-html="renderChatMarkdown(message.metadata.raw.content)"
+                        />
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </template>
+              <template v-else>
                 <div
                   class="rounded-xl border px-4 py-3.5 text-[13px] leading-relaxed shadow-sm"
                   :class="
-                    msg.role === 'user'
+                    message.metadata.raw.role === 'user'
                       ? 'ml-auto inline-block min-w-0 max-w-[min(100%,36rem)] border-sky-200/80 bg-sky-50 text-foreground dark:border-sky-900/50 dark:bg-sky-950/40'
-                      : msg.role === 'tool'
+                      : message.metadata.raw.role === 'tool'
                         ? 'border-border bg-muted text-foreground dark:border-white/10 dark:bg-secondary/80'
                         : 'border-border bg-card text-foreground'
                   "
                 >
                   <ChatToolOutputTags
-                    v-if="msg.role === 'tool'"
-                    :text="msg.content"
+                    v-if="message.metadata.raw.role === 'tool'"
+                    :text="message.metadata.raw.content"
                   />
-                  <template v-else-if="msg.role === 'agent'">
+                  <template v-else-if="message.metadata.raw.role === 'agent'">
                     <div
-                      v-if="msg.content.trim()"
+                      v-if="message.metadata.raw.content.trim()"
                       class="chat-md min-w-0 text-left [&_a]:break-all [&_img]:max-w-full [&_img]:h-auto"
-                      v-html="renderChatMarkdown(msg.content)"
+                      v-html="renderChatMarkdown(message.metadata.raw.content)"
                     />
                   </template>
                   <p
                     v-else
-                    class="whitespace-pre-wrap break-all text-left text-pretty [overflow-wrap:anywhere]"
+                    class="whitespace-pre-wrap break-all text-left text-pretty wrap-anywhere"
                   >
-                    {{ msg.content }}
+                    {{ message.metadata.raw.content }}
                   </p>
                 </div>
-              </div>
+              </template>
             </template>
-          </div>
-          <div
-            v-if="sending"
-            class="flex gap-3"
-            aria-live="polite"
-            aria-busy="true"
-          >
-            <div
-              class="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl border border-border bg-card shadow-sm"
-            >
-              <IconStar class="size-4 text-amber-500" />
-            </div>
-            <div class="min-w-0 flex-1 space-y-2">
+            <template #indicator>
               <div
                 class="inline-flex max-w-[min(100%,36rem)] items-center gap-2 rounded-xl border border-border bg-card px-4 py-3.5 text-[13px] text-muted-foreground shadow-sm"
+                aria-live="polite"
+                aria-busy="true"
               >
-                <IconLoader2 class="size-4 shrink-0 animate-spin text-amber-500" aria-hidden="true" />
+                <UIcon name="i-lucide-loader-2" class="size-4 shrink-0 animate-spin text-amber-500" aria-hidden="true" />
                 <span>{{ t("chat.replying") }}</span>
               </div>
-            </div>
-          </div>
-          <div
-            ref="chatScrollEndRef"
-            class="h-px w-full shrink-0 scroll-mt-0"
-            aria-hidden="true"
-          />
+            </template>
+          </UChatMessages>
         </div>
       </div>
 
-      <!-- 输入 -->
+      <!-- 输入：UChatPrompt 默认插槽挂 UChatPromptSubmit；#footer 仅放辅助操作（与官方文档一致） -->
       <div
         class="sticky bottom-0 z-10 mt-auto border-t border-border bg-background/95 p-3 backdrop-blur-md md:p-4"
       >
         <div class="mx-auto max-w-3xl">
-          <div
-            class="rounded-xl border border-border bg-card p-1.5 shadow-lg shadow-foreground/5 dark:shadow-none"
+          <UChatPrompt
+            v-model="draft"
+            :placeholder="t('chat.messagePlaceholder')"
+            :disabled="loadingHistory"
+            :rows="3"
+            :maxrows="12"
+            variant="outline"
+            :autofocus="false"
+            class="rounded-xl shadow-lg shadow-foreground/5 dark:shadow-none"
+            @submit="onChatPromptSubmit"
           >
-            <Textarea
-              v-model="draft"
-              :placeholder="t('chat.messagePlaceholder')"
-              class="min-h-[80px] resize-none rounded-lg border-0 bg-transparent px-3 py-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-0"
+            <!-- 默认插槽 → 内部 UTextarea，用于右下角提交（见 https://ui.nuxt.com/docs/components/chat-prompt ） -->
+            <UChatPromptSubmit
+              :status="chatMessagesStatus"
+              icon="i-lucide-arrow-up"
+              color="primary"
+              square
+              class="shrink-0 shadow-md"
+              :disabled="
+                loadingHistory ||
+                (chatMessagesStatus === 'ready' && !draft.trim())
+              "
+              :title="t('chat.send')"
+              @stop="onChatPromptStop"
             />
-            <div class="flex items-center justify-end gap-0.5 px-2 pb-1 pt-0.5">
-                <Tooltip>
-                  <TooltipTrigger as-child>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      class="size-9 text-muted-foreground"
-                      :disabled="loadingHistory || !messages.length"
-                      :aria-label="t('chat.downloadChatAria')"
-                      @click="downloadCurrentChatMarkdown"
-                    >
-                      <IconDownload class="size-5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{{ t("chat.downloadChatTooltip") }}</TooltipContent>
-                </Tooltip>
-                <Button
+            <template #footer>
+              <UTooltip :text="t('chat.downloadChatTooltip')">
+                <UButton
+                  variant="ghost"
+                  color="neutral"
+                  class="size-9 text-muted-foreground"
+                  :disabled="loadingHistory || !messages.length"
+                  :aria-label="t('chat.downloadChatAria')"
                   type="button"
-                  size="icon"
-                  class="ml-1 size-11 rounded-full shadow-md"
-                  :disabled="sending || loadingHistory || !draft.trim()"
-                  :title="t('chat.send')"
-                  @click="void sendMessage()"
+                  @click="downloadCurrentChatMarkdown"
                 >
-                  <IconSend class="size-5" />
-                </Button>
-            </div>
-          </div>
+                  <UIcon name="i-lucide-download" class="size-5" />
+                </UButton>
+              </UTooltip>
+            </template>
+          </UChatPrompt>
         </div>
       </div>
   </div>

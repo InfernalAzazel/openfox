@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'node:path'
@@ -6,8 +6,22 @@ import VueRouter from 'vue-router/vite'
 import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite'
 import Layouts from 'vite-plugin-vue-layouts'
 import { fileURLToPath } from 'node:url'
+import ui from '@nuxt/ui/vite'
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url))
+
+/** 在 Node 解析 package exports 之前拦截，避免 ./vue-plugin 仅有 types、无 import 时报错 */
+function nuxtUiVuePluginResolve(): Plugin {
+  return {
+    name: 'nuxt-ui-vue-plugin-resolve',
+    enforce: 'pre',
+    resolveId(id) {
+      if (id === '@nuxt/ui/vue-plugin') {
+        return 'virtual:nuxt-ui-plugins'
+      }
+    },
+  }
+}
 
 /** FastAPI 子路径挂载时设置 `VITE_APP_BASE=/prefix`（自动补尾斜杠） */
 function viteAppBase(): string {
@@ -26,7 +40,8 @@ export default defineConfig({
     vue(),
     Layouts(),
     tailwindcss(),
-
+    nuxtUiVuePluginResolve(),
+    ui(),
     VueI18nPlugin({
       include: path.resolve(projectRoot, 'src/i18n/locales/**'),
       runtimeOnly: false,
@@ -37,7 +52,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(projectRoot, './src'),
-      '@i18n': fileURLToPath(new URL('./src/i18n', import.meta.url))
+      '@i18n': fileURLToPath(new URL('./src/i18n', import.meta.url)),
     },
   },
   server: {

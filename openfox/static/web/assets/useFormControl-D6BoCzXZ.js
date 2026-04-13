@@ -1,1 +1,0 @@
-import{p as e,st as t}from"./vue-i18n-DoF304SY.js";import{s as n}from"./index-CtXtFS1u.js";function r(r){return e(()=>t(r)?!!n(r)?.closest(`form`):!0)}export{r as t};

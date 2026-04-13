@@ -4,21 +4,43 @@
 import type { AssistantToolCallTag, SessionChatLine } from '@/types/chat'
 import type { ModelMessage } from '@/types/os'
 
+/**
+ * 从 messages 数组中提取**本次 run** 的 tool_calls 及对应 tool 输出。
+ * API 返回的 `messages` 包含整个会话历史，因此只看最后一条 user 消息之后的部分。
+ */
 function toolCallsFromAssistantMessages(
   msgList: unknown,
   pickSession: (o: object) => void,
-): AssistantToolCallTag[] | undefined {
+): { toolCalls: AssistantToolCallTag[]; toolOutputs: string[] } | undefined {
   if (!Array.isArray(msgList) || msgList.length === 0) return undefined
-  let out: AssistantToolCallTag[] | undefined
-  for (const item of msgList) {
+
+  let lastUserIdx = -1
+  for (let i = 0; i < msgList.length; i++) {
+    const item = msgList[i]
     if (item === null || typeof item !== 'object') continue
     pickSession(item)
-    const row = item as Record<string, unknown>
-    if (row.role !== 'assistant') continue
-    const tc = parseToolCallsFromRow(row)
-    if (tc?.length) out = tc
+    if ((item as Record<string, unknown>).role === 'user') lastUserIdx = i
   }
-  return out
+
+  const toolCalls: AssistantToolCallTag[] = []
+  const toolOutputs: string[] = []
+  const startIdx = lastUserIdx >= 0 ? lastUserIdx + 1 : 0
+
+  for (let i = startIdx; i < msgList.length; i++) {
+    const item = msgList[i]
+    if (item === null || typeof item !== 'object') continue
+    const row = item as Record<string, unknown>
+    if (row.role === 'assistant') {
+      const tc = parseToolCallsFromRow(row)
+      if (tc?.length) toolCalls.push(...tc)
+    } else if (row.role === 'tool') {
+      const content = typeof row.content === 'string' ? row.content : ''
+      toolOutputs.push(content)
+    }
+  }
+
+  if (!toolCalls.length) return undefined
+  return { toolCalls, toolOutputs }
 }
 
 function parseToolCallsFromRow(
@@ -58,6 +80,7 @@ export function parseAgentRunResult(raw: unknown): {
   text: string
   sessionId?: string
   toolCalls?: AssistantToolCallTag[]
+  toolOutputs?: string[]
 } {
   let sessionId: string | undefined
 
@@ -84,9 +107,15 @@ export function parseAgentRunResult(raw: unknown): {
     const toolCallsFromRoot = parseToolCallsFromRow(o)
     if (typeof o.content === 'string') {
       const fromMessages = toolCallsFromAssistantMessages(o.messages, pickSession)
-      const toolCalls =
-        toolCallsFromRoot?.length ? toolCallsFromRoot : fromMessages
-      return { text: o.content, sessionId, toolCalls }
+      if (fromMessages) {
+        return {
+          text: o.content,
+          sessionId,
+          toolCalls: fromMessages.toolCalls,
+          toolOutputs: fromMessages.toolOutputs,
+        }
+      }
+      return { text: o.content, sessionId, toolCalls: toolCallsFromRoot }
     }
     if (typeof o.content === 'number' || typeof o.content === 'boolean') {
       return { text: String(o.content), sessionId, toolCalls: toolCallsFromRoot }
@@ -109,21 +138,31 @@ export function parseAgentRunResult(raw: unknown): {
     /** Run 接口常见：`messages` 中为 OpenAI 形态 assistant 行，正文/tool_calls 仅在数组内 */
     const msgList = o.messages
     if (Array.isArray(msgList) && msgList.length) {
+      const fromMessages = toolCallsFromAssistantMessages(msgList, pickSession)
+
+      let lastUserIdx = -1
+      for (let i = msgList.length - 1; i >= 0; i--) {
+        const item = msgList[i]
+        if (item !== null && typeof item === 'object' && (item as Record<string, unknown>).role === 'user') {
+          lastUserIdx = i
+          break
+        }
+      }
       const parts: string[] = []
-      for (const item of msgList) {
+      const startIdx = lastUserIdx >= 0 ? lastUserIdx + 1 : 0
+      for (let i = startIdx; i < msgList.length; i++) {
+        const item = msgList[i]
         if (item === null || typeof item !== 'object') continue
-        pickSession(item)
         const row = item as Record<string, unknown>
         if (row.role !== 'assistant') continue
         const c = row.content
         if (typeof c === 'string' && c.trim()) parts.push(c.trim())
       }
       const text = parts.join('\n\n')
-      const toolCalls =
-        toolCallsFromAssistantMessages(msgList, pickSession) ??
-        toolCallsFromRoot
+      const toolCalls = fromMessages?.toolCalls ?? toolCallsFromRoot
+      const toolOutputs = fromMessages?.toolOutputs
       if (text || toolCalls?.length) {
-        return { text, sessionId, toolCalls }
+        return { text, sessionId, toolCalls, toolOutputs }
       }
     }
     if (Array.isArray(raw)) {
@@ -134,7 +173,7 @@ export function parseAgentRunResult(raw: unknown): {
           pickSession(item)
           const row = item as Record<string, unknown>
           const tc = parseToolCallsFromRow(row)
-          if (tc?.length) toolCalls = tc
+          if (tc?.length) toolCalls = [...(toolCalls ?? []), ...tc]
           const c = row.content
           if (typeof c === 'string') parts.push(c)
         }

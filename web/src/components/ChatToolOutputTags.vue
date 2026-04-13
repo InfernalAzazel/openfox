@@ -1,13 +1,22 @@
 <script setup lang="ts">
-import { IconInfoCircle } from "@tabler/icons-vue"
 import { computed } from "vue"
 import { useI18n } from "vue-i18n"
 
 const { t } = useI18n()
 
-const props = defineProps<{
-  text: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    text: string
+    /** 与 UChatTool 一致：流式输出时触发条 shimmer */
+    streaming?: boolean
+    /** 是否默认展开工具输出（默认 true，与原先始终可见一致） */
+    defaultOpen?: boolean
+  }>(),
+  {
+    streaming: false,
+    defaultOpen: true,
+  },
+)
 
 function stripCodeFence(raw: string): string {
   let t = raw.trim()
@@ -89,13 +98,25 @@ const parsedEntries = computed(() => {
     return { kind: "raw" as const, raw }
   }
 })
+
+const outputSuffix = computed(() => {
+  const p = parsedEntries.value
+  if (p.kind !== "tags" || !p.tags.length) return undefined
+  return t("tools.toolOutputFieldCount", { n: p.tags.length })
+})
 </script>
 
 <template>
-  <div class="space-y-2">
-    <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-      {{ t("tools.toolOutput") }}
-    </p>
+  <UChatTool
+    class="w-full max-w-full min-w-0"
+    variant="card"
+    chevron="leading"
+    icon="i-lucide-hammer"
+    :text="t('tools.toolOutput')"
+    :suffix="outputSuffix"
+    :streaming="streaming"
+    :default-open="defaultOpen"
+  >
     <div
       v-if="parsedEntries.kind === 'tags' && parsedEntries.tags.length"
       class="flex flex-wrap gap-2"
@@ -103,15 +124,15 @@ const parsedEntries = computed(() => {
       <div
         v-for="(e, idx) in parsedEntries.tags"
         :key="`${idx}-${e.key}`"
-        class="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-muted px-2.5 py-1.5 pl-3 text-[11px] shadow-sm dark:border-white/10 dark:bg-secondary/80"
+        class="inline-flex max-w-full items-center gap-1.5 rounded-full border border-default bg-elevated px-2.5 py-1.5 pl-3 text-[11px] shadow-sm"
       >
-        <span class="shrink-0 font-semibold uppercase tracking-wide text-foreground">
+        <span class="shrink-0 font-semibold uppercase tracking-wide text-default">
           {{ formatKeyLabel(e.key) }}
         </span>
         <a
           v-if="e.href"
           :href="e.href"
-          class="max-w-[min(100%,22rem)] truncate font-mono text-sky-700 underline decoration-sky-700/50 underline-offset-2 dark:text-sky-400 dark:decoration-sky-400/50"
+          class="max-w-[min(100%,22rem)] truncate font-mono text-primary underline decoration-primary/50 underline-offset-2"
           target="_blank"
           rel="noopener noreferrer"
           :title="e.value"
@@ -120,23 +141,23 @@ const parsedEntries = computed(() => {
         </a>
         <span
           v-else
-          class="max-w-[min(100%,22rem)] truncate font-mono text-foreground"
+          class="max-w-[min(100%,22rem)] truncate font-mono text-default"
           :title="e.value === 'true' || e.value === 'false' ? undefined : e.value"
         >
           {{ e.value }}
         </span>
-        <IconInfoCircle class="size-3.5 shrink-0 opacity-60 dark:opacity-70" aria-hidden="true" />
+        <UIcon name="i-lucide-info" class="size-3.5 shrink-0 opacity-60" aria-hidden="true" />
       </div>
     </div>
     <pre
       v-else-if="parsedEntries.kind === 'raw'"
-      class="overflow-x-auto rounded-lg border border-border bg-muted/60 p-3 text-left text-[11px] leading-relaxed text-foreground dark:bg-secondary/40"
+      class="overflow-x-auto rounded-lg border border-default bg-muted/50 p-3 text-left text-[11px] leading-relaxed text-default"
     >{{ parsedEntries.raw }}</pre>
     <p
       v-else
-      class="text-xs text-muted-foreground"
+      class="text-xs text-dimmed"
     >
       {{ t("tools.empty") }}
     </p>
-  </div>
+  </UChatTool>
 </template>

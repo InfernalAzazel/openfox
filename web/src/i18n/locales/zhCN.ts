@@ -47,10 +47,16 @@ export default {
   },
   sidebar: {
     control: "控制",
+    sectionChat: "聊天",
+    sectionControl: "控制",
+    sectionSystem: "系统",
+    mainNav: "主导航",
+    footerNav: "侧栏底部",
     chat: "聊天",
     settings: "设置",
     closeSidebar: "关闭侧栏",
     collapseSidebar: "收起侧栏",
+    toggleHeaderAria: "切换侧栏",
     docs: "文档",
     docsTooltip: "文档（GitHub 仓库）",
     version: "版本 v2026.3.23-2",
@@ -203,6 +209,7 @@ export default {
       colEndpoint: "端点",
       colNextRun: "下次运行",
       colUpdatedAt: "更新时间",
+      emptyTable: "暂无调度任务",
     },
     detail: {
       closeAria: "关闭",
@@ -275,6 +282,7 @@ export default {
     toolMetrics: "指标",
     toolResult: "结果",
     toolOutput: "工具输出",
+    toolOutputFieldCount: "{n} 项",
     empty: "（空）",
   },
 }

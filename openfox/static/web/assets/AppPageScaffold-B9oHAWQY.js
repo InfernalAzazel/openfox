@@ -1,0 +1,1 @@
+import{I as e,f as t,h as n,vt as r,y as i,z as a}from"./vue-i18n-ChDratmp.js";var o={class:`flex min-h-0 flex-1 flex-col bg-background`},s=i({__name:`AppPageScaffold`,props:{contentClass:{}},setup(i){return(s,c)=>(e(),n(`div`,o,[t(`div`,{class:r([`flex-1 overflow-auto p-6 text-foreground`,i.contentClass])},[a(s.$slots,`default`)],2)]))}});export{s as t};

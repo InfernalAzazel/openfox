@@ -49,10 +49,16 @@ export default {
   },
   sidebar: {
     control: "Control",
+    sectionChat: "Chat",
+    sectionControl: "Control",
+    sectionSystem: "System",
+    mainNav: "Main navigation",
+    footerNav: "Sidebar footer",
     chat: "Chat",
     settings: "Settings",
     closeSidebar: "Close sidebar",
     collapseSidebar: "Collapse sidebar",
+    toggleHeaderAria: "Toggle sidebar",
     docs: "Docs",
     docsTooltip: "Documentation (GitHub repository)",
     version: "Version v2026.3.23-2",
@@ -211,6 +217,7 @@ export default {
       colEndpoint: "Endpoint",
       colNextRun: "Next run",
       colUpdatedAt: "Updated at",
+      emptyTable: "No schedules yet",
     },
     detail: {
       closeAria: "Close",
@@ -289,6 +296,7 @@ export default {
     toolMetrics: "Tool Metrics",
     toolResult: "Tool Result",
     toolOutput: "Tool output",
+    toolOutputFieldCount: "{n} fields",
     empty: "(empty)",
   },
 }

@@ -1,40 +1,8 @@
 <script setup lang="ts">
-import { IconMoon, IconSun } from "@tabler/icons-vue"
 import { useDark } from "@vueuse/core"
 import { computed, onMounted, ref, watch } from "vue"
-import { RouterLink, useRoute, useRouter } from "vue-router"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
+import { useRoute, useRouter } from "vue-router"
 import { useAppState } from "@/composables/store"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 import { useI18n } from "vue-i18n"
 
 /** 与各子路由 name（vue-router/auto）及侧栏文案对齐 */
@@ -70,7 +38,9 @@ watch(locale, (v) => {
   syncDocumentLang(code)
 })
 const isDark = useDark()
-const themeIcon = computed(() => (isDark.value ? IconSun : IconMoon))
+const themeIconName = computed(() =>
+  isDark.value ? "i-lucide-sun" : "i-lucide-moon",
+)
 
 function toggleTheme() {
   isDark.value = !isDark.value
@@ -83,11 +53,6 @@ function confirmLogout() {
   logoutDialogOpen.value = false
   void router.push("/login")
 }
-
-const { state: sidebarState, isMobile: sidebarIsMobile } = useSidebar()
-const showHeaderSidebarTrigger = computed(
-  () => sidebarIsMobile.value || sidebarState.value === "collapsed",
-)
 
 const currentPageLabel = computed(() => {
   const name = String(route.name ?? "")
@@ -109,118 +74,117 @@ const currentPageLabel = computed(() => {
 const localeFlagEmoji = computed(() =>
   locale.value === "zh-CN" ? "🇨🇳" : "🇺🇸",
 )
+
+function toggleLocale() {
+  locale.value = locale.value === "zh-CN" ? "en-US" : "zh-CN"
+}
+
+const navbarUi = {
+  root: "sticky top-0 z-20 min-h-14 shrink-0 border-b border-border bg-background/95 px-3 backdrop-blur-md md:px-5",
+}
 </script>
 
 <template>
-  <header
-    class="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background/95 px-3 backdrop-blur-md md:px-5"
+  <UDashboardNavbar
+    :toggle="false"
+    :ui="navbarUi"
   >
-    <SidebarTrigger
-      v-show="showHeaderSidebarTrigger"
-      class="!h-9 !w-9 shrink-0 text-muted-foreground [&_svg]:size-5"
-    />
-    <Breadcrumb>
-      <BreadcrumbList class="text-sm text-foreground">
-        <BreadcrumbItem>
-          <BreadcrumbLink as-child class="font-medium">
-            <RouterLink to="/">
-              {{ t("brand.name") }}
-            </RouterLink>
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbSeparator class="text-muted-foreground/60" />
-        <BreadcrumbItem>
-          <BreadcrumbPage class="text-muted-foreground">
-            {{ currentPageLabel }}
-          </BreadcrumbPage>
-        </BreadcrumbItem>
-      </BreadcrumbList>
-    </Breadcrumb>
-    <div class="ml-auto flex items-center gap-0.5">
-      <DropdownMenu>
-        <DropdownMenuTrigger as-child>
-          <Button
+    <template #left="{ sidebarCollapsed: navCollapsed }">
+      <UDashboardSidebarToggle
+        variant="ghost"
+        color="neutral"
+        square
+        class="size-9 shrink-0 text-muted-foreground lg:hidden"
+      />
+      <UDashboardSidebarCollapse
+        v-if="navCollapsed"
+        variant="ghost"
+        color="neutral"
+        square
+        class="hidden size-9 shrink-0 text-muted-foreground lg:inline-flex"
+      />
+      <UBreadcrumb
+        :items="[
+          { label: t('brand.name'), to: '/' },
+          { label: currentPageLabel },
+        ]"
+        class="min-w-0 flex-1 text-sm"
+      />
+    </template>
+
+    <template #right>
+      <div class="flex items-center gap-0.5">
+        <UTooltip
+          :text="
+            locale === 'zh-CN' ? t('header.languageEn') : t('header.languageZh')
+          "
+        >
+          <UButton
             variant="ghost"
-            size="icon"
-            class="size-9 text-muted-foreground [&_span]:text-xl [&_span]:leading-none"
+            color="neutral"
+            square
+            class="size-9"
             :aria-label="t('header.language')"
-            :title="t('header.language')"
+            @click="toggleLocale"
           >
-            <span aria-hidden="true">{{ localeFlagEmoji }}</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" class="min-w-[11rem]">
-          <DropdownMenuRadioGroup v-model="locale">
-            <DropdownMenuRadioItem value="en-US" class="cursor-pointer gap-2">
-              <span class="text-base leading-none" aria-hidden="true">🇺🇸</span>
-              <span>{{ t("header.languageEn") }}</span>
-            </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="zh-CN" class="cursor-pointer gap-2">
-              <span class="text-base leading-none" aria-hidden="true">🇨🇳</span>
-              <span>{{ t("header.languageZh") }}</span>
-            </DropdownMenuRadioItem>
-          </DropdownMenuRadioGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <Button
+            <span class="text-xl leading-none" aria-hidden="true">{{
+              localeFlagEmoji
+            }}</span>
+          </UButton>
+        </UTooltip>
+
+        <UTooltip :text="t('header.theme')">
+          <UButton
             variant="ghost"
-            size="icon"
-            class="size-9 text-muted-foreground"
+            color="neutral"
+            square
+            class="size-9"
             :aria-label="t('header.theme')"
-            :title="t('header.theme')"
             @click="toggleTheme"
           >
-            <component :is="themeIcon" class="size-5" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{{ t("header.theme") }}</TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <Button
+            <UIcon :name="themeIconName" class="size-5" />
+          </UButton>
+        </UTooltip>
+
+        <UTooltip :text="t('header.account')">
+          <UButton
             variant="ghost"
-            size="icon"
-            class="group size-9 hover:bg-transparent focus-visible:bg-transparent"
-            aria-haspopup="dialog"
-            :aria-expanded="logoutDialogOpen"
+            color="neutral"
+            square
+            :avatar="{
+              alt: 'U',
+              size: 'sm',
+            }"
             @click="logoutDialogOpen = true"
           >
-            <span
-              class="flex size-8 items-center justify-center rounded-full bg-muted text-xs font-medium text-foreground transition-colors group-hover:bg-accent group-hover:text-accent-foreground"
-            >
-              U
-            </span>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{{ t("header.account") }}</TooltipContent>
-      </Tooltip>
-    </div>
+          </UButton>
+        </UTooltip>
+      </div>
 
-    <AlertDialog v-model:open="logoutDialogOpen">
-      <AlertDialogContent class="border-border sm:rounded-xl">
-        <AlertDialogHeader>
-          <AlertDialogTitle class="text-foreground">
-            {{ t("header.logoutTitle") }}
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            {{ t("header.logoutDescription") }}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel type="button">
-            {{ t("common.cancel") }}
-          </AlertDialogCancel>
-          <Button
-            type="button"
-            variant="destructive"
-            @click="confirmLogout"
-          >
-            {{ t("common.confirm") }}
-          </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  </header>
+      <UModal v-model:open="logoutDialogOpen">
+        <template #content>
+          <UCard>
+            <template #header>
+              <h3 class="text-lg font-semibold">
+                {{ t("header.logoutTitle") }}
+              </h3>
+              <p class="text-sm text-muted">
+                {{ t("header.logoutDescription") }}
+              </p>
+            </template>
+            <template #footer>
+              <div class="flex justify-end gap-2">
+                <UButton variant="outline" @click="logoutDialogOpen = false">
+                  {{ t("common.cancel") }}
+                </UButton>
+                <UButton color="error" @click="confirmLogout">
+                  {{ t("common.confirm") }}
+                </UButton>
+              </div>
+            </template>
+          </UCard>
+        </template>
+      </UModal>
+    </template>
+  </UDashboardNavbar>
 </template>

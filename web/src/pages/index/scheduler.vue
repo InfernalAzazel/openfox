@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { TableColumn } from "@nuxt/ui"
+import type { Row } from "@tanstack/vue-table"
 import {
   createScheduleAPI,
   deleteScheduleAPI,
@@ -11,53 +13,10 @@ import {
 } from "@/api/schedules"
 import { getAgentsAPI } from "@/api/os"
 import AppPageScaffold from "@/components/AppPageScaffold.vue"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Separator } from "@/components/ui/separator"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Textarea } from "@/components/ui/textarea"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 import { getAgentOsBaseUrl } from "@/composables/request"
 import { useAppState } from "@/composables/store"
-import { cn } from "@/lib/utils"
 import type { ScheduleResponse, ScheduleRunResponse } from "@/types/schedules"
-import { Calendar, ChevronDown, ExternalLink, Info, RefreshCw, X } from "lucide-vue-next"
-import { computed, onMounted, ref, watch } from "vue"
+import { computed, h, onMounted, ref, resolveComponent, watch } from "vue"
 import { useI18n } from "vue-i18n"
 
 export interface ScheduleRunEntry {
@@ -500,10 +459,173 @@ function scheduleNameIsValid(name: string): boolean {
 
 const scheduleNameHint = computed(() => t("scheduler.nameHint"))
 
+const USwitch = resolveComponent("USwitch")
+
+const httpMethodSelectItems = [
+  { value: "GET", label: "GET" },
+  { value: "POST", label: "POST" },
+  { value: "PUT", label: "PUT" },
+  { value: "PATCH", label: "PATCH" },
+  { value: "DELETE", label: "DELETE" },
+] as const
+
+const timezoneSelectItems = computed((): { value: string; label: string }[] =>
+  timezoneOptions.map((o) => ({ value: o.value as string, label: o.label })),
+)
+
+const detailTabItems = computed(() => {
+  const r = selectedRow.value
+  return [
+    {
+      value: "details" as const,
+      label: t("scheduler.detail.tabsDetails"),
+      slot: "details",
+    },
+    {
+      value: "runs" as const,
+      label: t("scheduler.detail.tabsRuns"),
+      badge: r?.runsCount ?? 0,
+      slot: "runs",
+    },
+  ]
+})
+
+const scheduleTableMeta = computed(() => ({
+  class: {
+    tr: (row: { original: ScheduleRow }) =>
+      [
+        "cursor-pointer transition-colors",
+        selectedId.value === row.original.id
+          ? "bg-accent text-accent-foreground hover:bg-accent/90 [&_td]:!text-accent-foreground dark:hover:bg-accent/80"
+          : "",
+      ].filter(Boolean).join(" "),
+  },
+}))
+
+/** 与 sessions / skills 列表 UTable 一致 */
+const schedulerTableUi = {
+  root: "overflow-x-auto",
+  base: "min-w-full table-fixed",
+  thead: "bg-elevated/40",
+  th: "border-b border-default py-2 px-3 text-sm font-medium text-muted-foreground",
+  tbody: "divide-y divide-default",
+  tr: "odd:bg-default even:bg-elevated/30 hover:bg-elevated/45 dark:even:bg-white/[0.06]",
+  td: "py-2 px-3 text-sm align-middle",
+  separator: "hidden",
+  empty: "py-8 text-sm text-muted-foreground",
+  loading: "py-8 text-sm",
+}
+
+const scheduleColumns = computed<TableColumn<ScheduleRow>[]>(() => [
+  {
+    id: "enabled",
+    header: t("scheduler.table.colEnabled"),
+    meta: {
+      class: {
+        th: "w-24 text-center",
+        td: "w-24 text-center",
+      },
+    },
+    cell: ({ row }) =>
+      h(
+        "div",
+        {
+          class: "flex justify-center",
+          onClick: (e: Event) => e.stopPropagation(),
+        },
+        [
+          h(USwitch as any, {
+            modelValue: row.original.enabled,
+            size: "sm",
+            "onUpdate:modelValue": (v: boolean) =>
+              onScheduleEnabled(row.original, v),
+            "aria-label": row.original.enabled
+              ? t("scheduler.switch.disableAria", { name: row.original.name })
+              : t("scheduler.switch.enableAria", { name: row.original.name }),
+          }),
+        ],
+      ),
+    enableSorting: false,
+  },
+  {
+    accessorKey: "name",
+    header: t("scheduler.table.colName"),
+    meta: {
+      class: {
+        th: "min-w-40",
+        td: "max-w-0 min-w-0",
+      },
+    },
+    cell: ({ row }) =>
+      h(
+        "span",
+        {
+          class: "line-clamp-2 wrap-break-word font-mono text-sm",
+          title: row.original.name,
+        },
+        row.original.name,
+      ),
+  },
+  {
+    accessorKey: "cron",
+    header: t("scheduler.table.colCron"),
+    meta: {
+      class: {
+        th: "min-w-24 whitespace-nowrap",
+        td: "whitespace-nowrap font-mono text-sm",
+      },
+    },
+  },
+  {
+    accessorKey: "endpoint",
+    header: t("scheduler.table.colEndpoint"),
+    meta: {
+      class: {
+        th: "min-w-48",
+        td: "min-w-48 font-mono text-sm",
+      },
+    },
+  },
+  {
+    id: "nextRun",
+    accessorFn: (r) => r.nextRun,
+    header: t("scheduler.table.colNextRun"),
+    meta: {
+      class: {
+        th: "min-w-40",
+        td: "max-w-48 truncate tabular-nums text-sm",
+      },
+    },
+    cell: ({ row }) =>
+      isValidDate(row.original.nextRun)
+        ? formatNextRun(row.original.nextRun)
+        : "—",
+  },
+  {
+    id: "updatedAt",
+    accessorFn: (r) => r.updatedAt,
+    header: t("scheduler.table.colUpdatedAt"),
+    meta: {
+      class: {
+        th: "min-w-40",
+        td: "whitespace-nowrap tabular-nums text-sm text-muted-foreground",
+      },
+    },
+    cell: ({ row }) =>
+      isValidDate(row.original.updatedAt)
+        ? formatUpdatedAt(row.original.updatedAt)
+        : "—",
+  },
+])
+
 function openRow(row: ScheduleRow) {
   selectedId.value = row.id
   draft.value = rowToDraft(row)
   detailTab.value = "details"
+}
+
+function onScheduleTableRowSelect(_e: Event, row: Row<ScheduleRow>) {
+  openRow(row.original)
 }
 
 function closeDetail() {
@@ -803,160 +925,84 @@ async function onScheduleEnabled(row: ScheduleRow, enabled: boolean) {
             : ''
         "
       >
-        <p
+        <UAlert
           v-if="schedulesError"
-          class="shrink-0 text-sm text-red-600 dark:text-red-400"
-        >
-          {{ schedulesError }}
-        </p>
-        <p
+          color="error"
+          variant="subtle"
+          class="shrink-0"
+          :description="schedulesError"
+        />
+        <UAlert
           v-else-if="!hasOsAuth"
-          class="shrink-0 rounded-lg border border-dashed border-amber-200/80 bg-amber-50/80 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200"
-        >
-          {{ t("scheduler.needAuthHint") }}
-        </p>
+          color="warning"
+          variant="subtle"
+          class="shrink-0 rounded-lg border-dashed"
+          :description="t('scheduler.needAuthHint')"
+        />
 
         <div
-          class="rounded-xl border border-border bg-card shadow-sm"
+          class="flex flex-col overflow-hidden rounded-xl border border-default bg-default shadow-sm"
         >
           <div
-            class="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3"
+            class="flex min-h-12 flex-nowrap items-center justify-between gap-3 overflow-x-auto border-b border-default px-3 py-3 sm:min-h-14 sm:px-4 sm:py-3.5"
           >
-            <span
-              class="text-left text-xs font-normal tracking-normal text-muted-foreground"
-            >
+            <span class="shrink-0 text-xs text-muted-foreground">
               {{
                 schedulesLoading
                   ? t("common.loading")
                   : t("common.itemsInTable", { count: rows.length })
               }}
             </span>
-            <div class="flex items-center gap-2">
-              <Button
+            <div class="flex shrink-0 items-center gap-2 sm:gap-3">
+              <UButton
                 variant="outline"
+                color="neutral"
                 size="sm"
-                class="h-9 rounded-lg border-border bg-muted/50 text-xs font-semibold uppercase tracking-wide text-foreground dark:bg-muted/30"
                 type="button"
                 @click="openCreateDialog"
               >
                 {{ t("scheduler.actions.createSchedule") }}
-              </Button>
-              <Button
+              </UButton>
+              <UButton
                 variant="outline"
-                size="icon"
-                class="h-9 w-9 shrink-0 rounded-lg border-border bg-muted/50 text-foreground dark:bg-muted/30"
+                color="neutral"
                 type="button"
+                icon="i-lucide-refresh-cw"
+                size="sm"
+                square
+                :aria-label="
+                  selectedId
+                    ? t('scheduler.refreshTitleAll')
+                    : t('scheduler.refreshTitleList')
+                "
                 :title="
                   selectedId
                     ? t('scheduler.refreshTitleAll')
                     : t('scheduler.refreshTitleList')
                 "
                 :disabled="schedulesLoading || toolbarRefreshInFlight"
+                :loading="schedulesLoading || toolbarRefreshInFlight"
                 @click="void refreshFromToolbar()"
-              >
-                <RefreshCw
-                  class="size-4 opacity-70"
-                  :class="(schedulesLoading || toolbarRefreshInFlight) ? 'animate-spin' : ''"
-                  aria-hidden="true"
-                />
-                <span class="sr-only">{{ t("common.refresh") }}</span>
-              </Button>
+              />
             </div>
           </div>
 
-          <div class="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow class="border-border hover:bg-transparent">
-                  <TableHead
-                    class="w-24 text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-                  >
-                    {{ t("scheduler.table.colEnabled") }}
-                  </TableHead>
-                  <TableHead
-                    class="min-w-40 text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-                  >
-                    {{ t("scheduler.table.colName") }}
-                  </TableHead>
-                  <TableHead
-                    class="min-w-24 whitespace-nowrap font-mono text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-                  >
-                    {{ t("scheduler.table.colCron") }}
-                  </TableHead>
-                  <TableHead
-                    class="min-w-48 font-mono text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-                  >
-                    {{ t("scheduler.table.colEndpoint") }}
-                  </TableHead>
-                  <TableHead
-                    class="min-w-40 text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-                  >
-                    {{ t("scheduler.table.colNextRun") }}
-                  </TableHead>
-                  <TableHead
-                    class="min-w-40 pr-4 text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-                  >
-                    {{ t("scheduler.table.colUpdatedAt") }}
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow
-                  v-for="row in rows"
-                  :key="row.id"
-                  class="cursor-pointer border-border/80 transition-colors"
-                  :class="
-                    cn(
-                      selectedId === row.id
-                        && 'bg-accent text-accent-foreground hover:bg-accent/90 dark:hover:bg-accent/80 [&_td]:!text-accent-foreground',
-                      selectedId !== row.id && 'hover:bg-muted/50 dark:hover:bg-white/5',
-                    )
-                  "
-                  @click="openRow(row)"
-                >
-                  <TableCell class="py-3 text-center" @click.stop>
-                    <div class="flex justify-center">
-                      <Switch
-                        :model-value="row.enabled"
-                        :aria-label="
-                          row.enabled
-                            ? t('scheduler.switch.disableAria', { name: row.name })
-                            : t('scheduler.switch.enableAria', { name: row.name })
-                        "
-                        @update:model-value="(v: boolean) => onScheduleEnabled(row, v)"
-                      />
-                    </div>
-                  </TableCell>
-                  <TableCell
-                    class="max-w-0 py-3 font-medium text-foreground"
-                  >
-                    <span class="line-clamp-2 wrap-break-word font-mono text-sm">{{ row.name }}</span>
-                  </TableCell>
-                  <TableCell
-                    class="whitespace-nowrap py-3 font-mono text-sm text-foreground"
-                  >
-                    {{ row.cron }}
-                  </TableCell>
-                  <TableCell
-                    class="py-3 font-mono text-sm text-foreground"
-                  >
-                    {{ row.endpoint }}
-                  </TableCell>
-                  <TableCell
-                    class="max-w-48 truncate py-3 text-sm tabular-nums text-foreground"
-                    :title="isValidDate(row.nextRun) ? formatUpdatedAt(row.nextRun) : undefined"
-                  >
-                    {{ isValidDate(row.nextRun) ? formatNextRun(row.nextRun) : "—" }}
-                  </TableCell>
-                  <TableCell
-                    class="whitespace-nowrap py-3 pr-4 text-sm tabular-nums text-muted-foreground"
-                  >
-                    {{ isValidDate(row.updatedAt) ? formatUpdatedAt(row.updatedAt) : "—" }}
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
+          <UTable
+            :data="rows"
+            :columns="scheduleColumns"
+            :meta="scheduleTableMeta"
+            :loading="schedulesLoading"
+            :empty="t('scheduler.table.emptyTable')"
+            :get-row-id="(row: ScheduleRow) => row.id"
+            sticky="header"
+            class="w-full min-w-0"
+            :ui="schedulerTableUi"
+            :on-select="onScheduleTableRowSelect"
+          >
+            <template #loading>
+              <span class="text-muted-foreground">{{ t("common.loading") }}</span>
+            </template>
+          </UTable>
         </div>
       </div>
 
@@ -966,301 +1012,273 @@ async function onScheduleEnabled(row: ScheduleRow, enabled: boolean) {
         class="flex min-h-[min(70dvh,36rem)] w-full shrink-0 flex-col lg:min-h-0 lg:sticky lg:top-0 lg:w-[min(38rem,min(88vw,calc(100vw-2rem)))]"
       >
         <div
-          class="flex max-h-full min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm"
+          class="flex max-h-full min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-default bg-default shadow-sm"
         >
           <div
-            class="flex shrink-0 items-start justify-between gap-2 border-b border-border px-4 py-3"
+            class="flex shrink-0 items-start justify-between gap-2 border-b border-default px-4 py-3"
           >
             <h2
-              class="min-w-0 flex-1 truncate pr-2 font-mono text-sm font-semibold text-foreground"
+              class="min-w-0 flex-1 truncate pr-2 font-mono text-sm font-semibold text-highlighted"
               :title="draft.name"
             >
               {{ draft.name || "—" }}
             </h2>
-            <Button
+            <UButton
               type="button"
               variant="outline"
-              size="icon-sm"
-              class="shrink-0 rounded-lg border-border"
+              color="neutral"
+              square
+              class="shrink-0 rounded-lg"
+              icon="i-lucide-x"
               :aria-label="t('scheduler.detail.closeAria')"
               @click="closeDetail"
-            >
-              <X class="size-4" />
-            </Button>
+            />
           </div>
 
-          <Tabs
+          <UTabs
             v-model="detailTab"
+            :items="detailTabItems"
+            value-key="value"
+            label-key="label"
             class="flex min-h-0 flex-1 flex-col gap-0"
+            :ui="{
+              root: 'flex min-h-0 flex-1 flex-col gap-0',
+              list: 'relative h-auto w-full shrink-0 justify-start gap-6 rounded-none border-b border-default bg-transparent p-0 px-4',
+              /** 默认 TabsIndicator 与自定义下划线叠在一起会错位，仅保留下划线样式 */
+              indicator: 'hidden',
+              trigger:
+                'relative z-10 rounded-none border-0 border-b-2 border-transparent bg-transparent px-0 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted shadow-none ring-0 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary',
+              content: 'mt-0 flex min-h-0 flex-1 flex-col overflow-hidden data-[state=inactive]:hidden',
+            }"
           >
-            <TabsList
-              class="h-auto w-full shrink-0 justify-start gap-6 rounded-none border-b border-border bg-transparent p-0 px-4"
-            >
-              <TabsTrigger
-                value="details"
-                class="rounded-none border-0 border-b-2 border-transparent bg-transparent px-0 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground shadow-none transition-colors hover:text-primary data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
-              >
-                {{ t("scheduler.detail.tabsDetails") }}
-              </TabsTrigger>
-              <TabsTrigger
-                value="runs"
-                class="rounded-none border-0 border-b-2 border-transparent bg-transparent px-0 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground shadow-none transition-colors hover:text-primary data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
-              >
-                <span class="inline-flex items-center gap-2">
-                  {{ t("scheduler.detail.tabsRuns") }}
-                  <Badge
-                    variant="secondary"
-                    class="h-5 rounded-md px-1.5 text-[10px] font-medium tabular-nums"
-                  >
-                    {{ selectedRow.runsCount }}
-                  </Badge>
-                </span>
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent
-              value="details"
-              class="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden data-[state=inactive]:hidden"
-            >
+            <template #details>
               <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
                 <div class="space-y-4 px-4 py-4">
                   <div class="space-y-1.5">
-                    <Label
-                      class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                    <label
+                      class="text-[11px] font-medium uppercase tracking-wide text-muted"
                     >
                       {{ t("scheduler.detail.name") }}
-                    </Label>
-                    <Input
+                    </label>
+                    <UInput
                       v-model="draft.name"
-                      class="font-mono"
+                      class="w-full font-mono"
                     />
-                    <p class="text-xs text-muted-foreground">
+                    <p class="text-xs text-muted">
                       {{ scheduleNameHint }}
                     </p>
                   </div>
 
                   <div class="space-y-1.5">
-                    <Label
-                      class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                    <label
+                      class="text-[11px] font-medium uppercase tracking-wide text-muted"
                     >
                       {{ t("scheduler.detail.cronExpression") }}
-                    </Label>
-                    <Input
+                    </label>
+                    <UInput
                       v-model="draft.cron"
-                      class="font-mono text-sm"
+                      class="w-full font-mono text-sm"
                     />
-                    <p class="text-xs text-muted-foreground italic">
+                    <p class="text-xs text-muted italic">
                       {{ t("scheduler.detail.cronFormatHint") }}
                     </p>
                   </div>
 
                   <div class="space-y-1.5">
-                    <Label
-                      class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                    <label
+                      class="text-[11px] font-medium uppercase tracking-wide text-muted"
                     >
                       {{ t("scheduler.detail.runsSummary") }}
-                    </Label>
+                    </label>
                     <div
-                      class="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-foreground dark:bg-muted/20"
+                      class="rounded-md border border-default bg-elevated/50 px-3 py-2 text-sm text-highlighted"
                     >
                       {{ runsHumanLabel }}
                     </div>
                   </div>
 
                   <div class="space-y-1.5">
-                    <Label
-                      class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                    <label
+                      class="text-[11px] font-medium uppercase tracking-wide text-muted"
                     >
                       {{ t("scheduler.detail.endpoint") }}
-                    </Label>
-                    <Input
+                    </label>
+                    <UInput
                       v-model="draft.endpoint"
-                      class="font-mono text-sm"
+                      class="w-full font-mono text-sm"
                     />
                   </div>
 
                   <div class="space-y-1.5">
-                    <Label
-                      class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                    <label
+                      class="text-[11px] font-medium uppercase tracking-wide text-muted"
                     >
                       {{ t("scheduler.detail.httpMethod") }}
-                    </Label>
-                    <Select v-model="draft.httpMethod">
-                      <SelectTrigger class="font-mono">
-                        <SelectValue :placeholder="t('scheduler.detail.methodPlaceholder')" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="GET">
-                          GET
-                        </SelectItem>
-                        <SelectItem value="POST">
-                          POST
-                        </SelectItem>
-                        <SelectItem value="PUT">
-                          PUT
-                        </SelectItem>
-                        <SelectItem value="PATCH">
-                          PATCH
-                        </SelectItem>
-                        <SelectItem value="DELETE">
-                          DELETE
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                    </label>
+                    <USelect
+                      v-model="draft.httpMethod"
+                      :items="[...httpMethodSelectItems]"
+                      value-key="value"
+                      label-key="label"
+                      class="w-full font-mono"
+                    />
                   </div>
 
                   <div class="space-y-1.5">
                     <div class="flex items-center justify-between gap-2">
                       <div class="flex items-center gap-1.5">
-                        <Label
-                          class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                        <label
+                          class="text-[11px] font-medium uppercase tracking-wide text-muted"
                         >
                           {{ t("scheduler.detail.payload") }}
-                        </Label>
-                        <Tooltip>
-                          <TooltipTrigger as-child>
-                            <button
-                              type="button"
-                              class="text-muted-foreground/80 outline-none hover:text-muted-foreground"
-                              :aria-label="t('scheduler.detail.payloadInfoAria')"
-                            >
-                              <Info class="size-3.5" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top">
-                            {{ t("scheduler.detail.payloadTooltip") }}
-                          </TooltipContent>
-                        </Tooltip>
+                        </label>
+                        <UTooltip :text="t('scheduler.detail.payloadTooltip')">
+                          <UButton
+                            type="button"
+                            variant="ghost"
+                            color="neutral"
+                            size="xs"
+                            square
+                            class="size-7"
+                            icon="i-lucide-info"
+                            :aria-label="t('scheduler.detail.payloadInfoAria')"
+                          />
+                        </UTooltip>
                       </div>
-                      <Button
+                      <UButton
                         type="button"
                         variant="ghost"
-                        size="sm"
+                        color="neutral"
+                        size="xs"
                         class="h-7 px-2 text-[11px] font-semibold uppercase"
                         @click="formatPayloadJson"
                       >
                         {{ t("scheduler.detail.formatJson") }}
-                      </Button>
+                      </UButton>
                     </div>
-                    <Textarea
+                    <UTextarea
                       v-model="draft.payloadText"
-                      class="min-h-36 resize-y font-mono text-xs leading-relaxed"
+                      :rows="8"
+                      autoresize
+                      class="min-h-36 w-full resize-y font-mono text-xs leading-relaxed"
                     />
                   </div>
 
                   <div class="space-y-1.5">
-                    <Label
-                      class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                    <label
+                      class="text-[11px] font-medium uppercase tracking-wide text-muted"
                     >
                       {{ t("scheduler.detail.descriptionOptional") }}
-                    </Label>
-                    <Textarea
+                    </label>
+                    <UTextarea
                       v-model="draft.description"
                       :placeholder="t('scheduler.detail.descriptionPlaceholder')"
-                      class="min-h-18 resize-y text-sm"
+                      :rows="3"
+                      autoresize
+                      class="min-h-18 w-full resize-y text-sm"
                     />
                   </div>
 
                   <div class="space-y-1.5">
-                    <Label
-                      class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                    <label
+                      class="text-[11px] font-medium uppercase tracking-wide text-muted"
                     >
                       {{ t("scheduler.detail.timezone") }}
-                    </Label>
-                    <Select v-model="draft.timezone">
-                      <SelectTrigger>
-                        <SelectValue :placeholder="t('scheduler.detail.timezonePlaceholder')" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem
-                          v-for="opt in timezoneOptions"
-                          :key="opt.value"
-                          :value="opt.value"
-                        >
-                          {{ opt.label }}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                    </label>
+                    <USelect
+                      v-model="draft.timezone"
+                      :items="timezoneSelectItems"
+                      value-key="value"
+                      label-key="label"
+                      class="w-full"
+                    />
                   </div>
 
-                  <Collapsible v-model:open="advancedOpen">
-                    <CollapsibleTrigger
-                      class="flex w-full items-center gap-2 py-1 text-left text-xs font-semibold tracking-wide text-foreground uppercase outline-none hover:opacity-80 dark:text-foreground"
+                  <UCollapsible v-model:open="advancedOpen">
+                    <button
+                      type="button"
+                      class="flex w-full items-center gap-2 py-1 text-left text-xs font-semibold tracking-wide text-highlighted uppercase outline-none hover:opacity-80"
                     >
-                      <ChevronDown
-                        class="size-4 shrink-0 text-muted-foreground transition-transform duration-200 dark:text-muted-foreground"
+                      <UIcon
+                        name="i-lucide-chevron-down"
+                        class="size-4 shrink-0 text-muted transition-transform duration-200"
                         :class="advancedOpen ? 'rotate-180' : ''"
                       />
                       {{ t("scheduler.detail.advanced") }}
-                    </CollapsibleTrigger>
-                    <CollapsibleContent class="pt-3 pb-1">
-                      <div
-                        class="ml-0.5 space-y-4 border-l-2 border-border pl-4"
-                      >
-                        <div class="space-y-1.5">
-                          <Label
-                            class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-                          >
-                            {{ t("scheduler.detail.timeoutSeconds") }}
-                          </Label>
-                          <Input
-                            v-model.number="draft.timeoutSeconds"
-                            type="number"
-                            min="0"
-                            step="1"
-                            class="tabular-nums"
-                          />
-                          <p class="text-xs text-muted-foreground">
-                            {{ t("scheduler.detail.timeoutHint") }}
-                          </p>
-                        </div>
-                        <div class="space-y-1.5">
-                          <Label
-                            class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-                          >
-                            {{ t("scheduler.detail.maxRetries") }}
-                          </Label>
-                          <Input
-                            v-model.number="draft.maxRetries"
-                            type="number"
-                            min="0"
-                            step="1"
-                            class="tabular-nums"
-                          />
-                          <p class="text-xs text-muted-foreground">
-                            {{ t("scheduler.detail.maxRetriesHint") }}
-                          </p>
-                        </div>
-                        <div class="space-y-1.5">
-                          <Label
-                            class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-                          >
-                            {{ t("scheduler.detail.retryDelaySeconds") }}
-                          </Label>
-                          <Input
-                            v-model.number="draft.retryDelaySeconds"
-                            type="number"
-                            min="0"
-                            step="1"
-                            class="tabular-nums"
-                          />
-                          <p class="text-xs text-muted-foreground">
-                            {{ t("scheduler.detail.retryDelayHint") }}
-                          </p>
+                    </button>
+                    <template #content>
+                      <div class="pt-3 pb-1">
+                        <div
+                          class="ml-0.5 space-y-4 border-l-2 border-default pl-4"
+                        >
+                          <div class="space-y-1.5">
+                            <label
+                              class="text-[11px] font-medium uppercase tracking-wide text-muted"
+                            >
+                              {{ t("scheduler.detail.timeoutSeconds") }}
+                            </label>
+                            <UInput
+                              v-model.number="draft.timeoutSeconds"
+                              type="number"
+                              min="0"
+                              step="1"
+                              class="w-full tabular-nums"
+                            />
+                            <p class="text-xs text-muted">
+                              {{ t("scheduler.detail.timeoutHint") }}
+                            </p>
+                          </div>
+                          <div class="space-y-1.5">
+                            <label
+                              class="text-[11px] font-medium uppercase tracking-wide text-muted"
+                            >
+                              {{ t("scheduler.detail.maxRetries") }}
+                            </label>
+                            <UInput
+                              v-model.number="draft.maxRetries"
+                              type="number"
+                              min="0"
+                              step="1"
+                              class="w-full tabular-nums"
+                            />
+                            <p class="text-xs text-muted">
+                              {{ t("scheduler.detail.maxRetriesHint") }}
+                            </p>
+                          </div>
+                          <div class="space-y-1.5">
+                            <label
+                              class="text-[11px] font-medium uppercase tracking-wide text-muted"
+                            >
+                              {{ t("scheduler.detail.retryDelaySeconds") }}
+                            </label>
+                            <UInput
+                              v-model.number="draft.retryDelaySeconds"
+                              type="number"
+                              min="0"
+                              step="1"
+                              class="w-full tabular-nums"
+                            />
+                            <p class="text-xs text-muted">
+                              {{ t("scheduler.detail.retryDelayHint") }}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </CollapsibleContent>
-                  </Collapsible>
+                    </template>
+                  </UCollapsible>
 
                   <div
-                    class="flex items-start gap-3 rounded-lg border border-border bg-muted/50 px-3 py-2.5 dark:bg-muted/25"
+                    class="flex items-start gap-3 rounded-lg border border-default bg-elevated/50 px-3 py-2.5"
                   >
-                    <Calendar class="mt-0.5 size-4 shrink-0 text-muted-foreground/70" />
+                    <UIcon
+                      name="i-lucide-calendar"
+                      class="mt-0.5 size-4 shrink-0 text-muted"
+                    />
                     <div>
-                      <div class="text-[11px] font-medium text-muted-foreground uppercase dark:text-muted-foreground">
+                      <div class="text-[11px] font-medium uppercase text-muted">
                         {{ t("scheduler.detail.updatedAt") }}
                       </div>
-                      <div class="text-sm tabular-nums text-foreground">
+                      <div class="text-sm tabular-nums text-highlighted">
                         {{
                           isValidDate(selectedRow.updatedAt)
                             ? formatUpdatedAt(selectedRow.updatedAt)
@@ -1271,15 +1289,12 @@ async function onScheduleEnabled(row: ScheduleRow, enabled: boolean) {
                   </div>
                 </div>
               </div>
-            </TabsContent>
+            </template>
 
-            <TabsContent
-              value="runs"
-              class="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden data-[state=inactive]:hidden"
-            >
+            <template #runs>
               <div
                 v-if="runsLoading"
-                class="px-4 py-8 text-center text-sm text-muted-foreground"
+                class="px-4 py-8 text-center text-sm text-muted"
               >
                 {{ t("scheduler.runs.loading") }}
               </div>
@@ -1290,26 +1305,25 @@ async function onScheduleEnabled(row: ScheduleRow, enabled: boolean) {
                 <div
                   v-for="run in runHistoryList"
                   :key="run.entryId"
-                  class="border-b border-border/80 last:border-b-0"
+                  class="border-b border-default/80 last:border-b-0"
                 >
-                  <Collapsible
+                  <UCollapsible
                     :open="expandedRunId === run.entryId"
                     @update:open="(o: boolean) => setRunExpanded(run.entryId, o)"
                   >
-                    <CollapsibleTrigger
+                    <button
                       type="button"
-                      :class="
-                        cn(
-                          'group flex w-full items-center gap-2 px-2 py-3 text-left outline-none transition-colors hover:bg-accent hover:text-accent-foreground',
-                          expandedRunId === run.entryId && 'bg-accent text-accent-foreground',
-                        )
-                      "
+                      :class="[
+                        'group flex w-full items-center gap-2 px-2 py-3 text-left outline-none transition-colors hover:bg-elevated',
+                        expandedRunId === run.entryId && 'bg-elevated',
+                      ]"
                     >
-                      <ChevronDown
-                        class="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-hover:text-accent-foreground"
+                      <UIcon
+                        name="i-lucide-chevron-down"
+                        class="size-4 shrink-0 text-muted transition-transform duration-200 group-hover:text-highlighted"
                         :class="
                           expandedRunId === run.entryId
-                            ? '-rotate-180 text-accent-foreground'
+                            ? '-rotate-180 text-highlighted'
                             : ''
                         "
                       />
@@ -1317,40 +1331,43 @@ async function onScheduleEnabled(row: ScheduleRow, enabled: boolean) {
                         class="min-w-0 flex-1 truncate font-mono text-[11px] leading-snug transition-colors sm:text-xs"
                         :class="
                           expandedRunId === run.entryId
-                            ? 'text-accent-foreground'
-                            : 'text-foreground group-hover:text-accent-foreground'
+                            ? 'text-highlighted'
+                            : 'text-highlighted group-hover:text-highlighted'
                         "
                       >
                         {{ run.runId }}
                       </span>
-                      <Badge
+                      <UBadge
                         v-if="run.status === 'SUCCESS'"
-                        class="shrink-0 border-0 bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-emerald-800 uppercase dark:bg-emerald-950/55 dark:text-emerald-400"
+                        color="success"
+                        variant="subtle"
+                        class="shrink-0 px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
                       >
                         {{ t("scheduler.runs.statusSuccess") }}
-                      </Badge>
-                      <Badge
+                      </UBadge>
+                      <UBadge
                         v-else
-                        variant="destructive"
+                        color="error"
+                        variant="subtle"
                         class="shrink-0 px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
                       >
                         {{ t("scheduler.runs.statusFailed") }}
-                      </Badge>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
+                      </UBadge>
+                    </button>
+                    <template #content>
                       <div
-                        class="border-l-2 border-border pb-4 pl-4 ml-5 mr-1 space-y-4"
+                        class="border-l-2 border-default pb-4 pl-4 ml-5 mr-1 space-y-4"
                       >
                         <div class="space-y-1.5">
                           <div
-                            class="text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+                            class="text-[10px] font-medium uppercase tracking-wide text-muted"
                           >
                             {{ t("scheduler.runs.input") }}
                           </div>
                           <div
-                            class="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-2.5 dark:bg-muted/30"
+                            class="flex items-center gap-2 rounded-lg border border-default bg-elevated/50 px-3 py-2.5"
                           >
-                            <span class="text-sm text-foreground">{{
+                            <span class="text-sm text-highlighted">{{
                               run.inputSummary
                             }}</span>
                             <a
@@ -1358,22 +1375,22 @@ async function onScheduleEnabled(row: ScheduleRow, enabled: boolean) {
                               :href="run.inputHref"
                               target="_blank"
                               rel="noopener noreferrer"
-                              class="inline-flex shrink-0 text-muted-foreground hover:text-foreground"
+                              class="inline-flex shrink-0 text-muted hover:text-highlighted"
                               :aria-label="t('scheduler.runs.openLinkAria')"
                               @click.stop
                             >
-                              <ExternalLink class="size-3.5" />
+                              <UIcon name="i-lucide-external-link" class="size-3.5" />
                             </a>
                           </div>
                         </div>
                         <div class="space-y-1.5">
                           <div
-                            class="text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+                            class="text-[10px] font-medium uppercase tracking-wide text-muted"
                           >
                             {{ t("scheduler.runs.output") }}
                           </div>
                           <div
-                            class="rounded-lg border border-border bg-muted/50 px-3 py-2.5 text-sm leading-relaxed whitespace-pre-wrap text-foreground dark:bg-muted/30"
+                            class="rounded-lg border border-default bg-elevated/50 px-3 py-2.5 text-sm leading-relaxed whitespace-pre-wrap text-highlighted"
                           >
                             {{ run.outputText }}
                           </div>
@@ -1381,422 +1398,400 @@ async function onScheduleEnabled(row: ScheduleRow, enabled: boolean) {
                         <dl
                           class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 font-mono text-[11px]"
                         >
-                          <dt class="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          <dt class="text-[10px] font-medium uppercase tracking-wide text-muted">
                             {{ t("scheduler.runs.triggeredAt") }}
                           </dt>
-                          <dd class="text-foreground tabular-nums">
+                          <dd class="text-highlighted tabular-nums">
                             {{ formatRunTime(run.triggeredAt) }}
                           </dd>
-                          <dt class="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          <dt class="text-[10px] font-medium uppercase tracking-wide text-muted">
                             {{ t("scheduler.runs.completedAt") }}
                           </dt>
-                          <dd class="text-foreground tabular-nums">
+                          <dd class="text-highlighted tabular-nums">
                             {{ formatRunTime(run.completedAt) }}
                           </dd>
-                          <dt class="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          <dt class="text-[10px] font-medium uppercase tracking-wide text-muted">
                             {{ t("scheduler.runs.statusCode") }}
                           </dt>
-                          <dd class="text-foreground tabular-nums">
+                          <dd class="text-highlighted tabular-nums">
                             {{ run.statusCode }}
                           </dd>
-                          <dt class="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          <dt class="text-[10px] font-medium uppercase tracking-wide text-muted">
                             {{ t("scheduler.runs.attempt") }}
                           </dt>
-                          <dd class="text-foreground tabular-nums">
+                          <dd class="text-highlighted tabular-nums">
                             {{ run.attempt }}
                           </dd>
-                          <dt class="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          <dt class="text-[10px] font-medium uppercase tracking-wide text-muted">
                             {{ t("scheduler.runs.runId") }}
                           </dt>
-                          <dd class="break-all text-foreground">
+                          <dd class="break-all text-highlighted">
                             {{ run.runId }}
                           </dd>
-                          <dt class="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          <dt class="text-[10px] font-medium uppercase tracking-wide text-muted">
                             {{ t("scheduler.runs.sessionId") }}
                           </dt>
-                          <dd class="break-all text-foreground">
+                          <dd class="break-all text-highlighted">
                             {{ run.sessionId }}
                           </dd>
                         </dl>
                       </div>
-                    </CollapsibleContent>
-                  </Collapsible>
+                    </template>
+                  </UCollapsible>
                 </div>
               </div>
               <p
                 v-else
-                class="px-4 py-6 text-center text-sm text-muted-foreground"
+                class="px-4 py-6 text-center text-sm text-muted"
               >
                 {{ t("scheduler.runs.noRuns") }}
               </p>
-            </TabsContent>
-          </Tabs>
+            </template>
+          </UTabs>
 
           <div
-            class="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border bg-card px-3 py-3"
+            class="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-default bg-default px-3 py-3"
           >
             <div class="flex flex-wrap gap-2">
-              <Button
+              <UButton
                 type="button"
-                variant="destructive"
+                color="error"
+                variant="solid"
                 size="sm"
                 class="text-xs font-semibold uppercase"
                 @click="deleteSchedule"
               >
                 {{ t("common.delete") }}
-              </Button>
-              <Button
+              </UButton>
+              <UButton
                 type="button"
-                variant="secondary"
+                color="neutral"
+                variant="subtle"
                 size="sm"
                 class="text-xs font-semibold uppercase"
                 @click="triggerNow"
               >
                 {{ t("scheduler.actions.triggerNow") }}
-              </Button>
+              </UButton>
             </div>
             <div class="flex flex-wrap gap-2">
-              <Button
+              <UButton
                 type="button"
+                color="neutral"
                 variant="outline"
                 size="sm"
                 class="text-xs font-semibold uppercase"
                 @click="cancelDetail"
               >
                 {{ t("common.cancel") }}
-              </Button>
-              <Button
+              </UButton>
+              <UButton
                 type="button"
+                color="primary"
+                variant="solid"
                 size="sm"
-                variant="secondary"
                 class="text-xs font-semibold uppercase"
                 @click="saveDetail"
               >
                 {{ t("common.save") }}
-              </Button>
+              </UButton>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <Dialog v-model:open="createDialogOpen">
-      <DialogContent
-        class="flex max-h-[min(90dvh,56rem)] w-[calc(100vw-1.5rem)] max-w-2xl flex-col gap-0 overflow-hidden border-border p-0 sm:max-w-2xl"
-      >
-        <DialogHeader
-          class="shrink-0 space-y-1 border-b border-border px-6 py-4 pr-14 text-left"
-        >
-          <DialogTitle class="text-base font-semibold tracking-tight">
-            {{ t("scheduler.create.title") }}
-          </DialogTitle>
-          <DialogDescription class="sr-only">
-            {{ t("scheduler.create.descriptionSr") }}
-          </DialogDescription>
-        </DialogHeader>
+    <UModal
+      v-model:open="createDialogOpen"
+      :title="t('scheduler.create.title')"
+      scrollable
+      class="max-w-2xl"
+      :ui="{
+        content:
+          'max-h-[min(90dvh,56rem)] w-[calc(100vw-1.5rem)] max-w-2xl sm:max-w-2xl',
+        body: 'px-6 py-4',
+        footer: 'border-t border-default bg-elevated/40',
+      }"
+    >
+      <template #description>
+        <span class="sr-only">{{ t("scheduler.create.descriptionSr") }}</span>
+      </template>
 
-        <div
-          class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-6 py-4"
-        >
-          <div class="space-y-4">
-            <div class="space-y-1.5">
-              <Label
-                class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-              >
-                {{ t("scheduler.detail.name") }}
-              </Label>
-              <Input
-                v-model="createForm.name"
-                class="font-mono"
-                :placeholder="t('scheduler.create.namePlaceholder')"
-              />
-              <p class="text-xs text-muted-foreground">
-                {{ scheduleNameHint }}
-              </p>
-            </div>
+      <template #body>
+        <div class="space-y-4">
+          <div class="space-y-1.5">
+            <label
+              class="text-[11px] font-medium uppercase tracking-wide text-muted"
+            >
+              {{ t("scheduler.detail.name") }}
+            </label>
+            <UInput
+              v-model="createForm.name"
+              class="w-full font-mono"
+              :placeholder="t('scheduler.create.namePlaceholder')"
+            />
+            <p class="text-xs text-muted">
+              {{ scheduleNameHint }}
+            </p>
+          </div>
 
-            <div class="space-y-1.5">
-              <Label
-                class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-              >
-                {{ t("scheduler.detail.cronExpression") }}
-              </Label>
-              <Input
-                v-model="createForm.cron"
-                class="font-mono text-sm"
-                :placeholder="t('scheduler.create.cronPlaceholder')"
-              />
-              <p class="text-xs text-muted-foreground">
-                {{ t("scheduler.detail.cronFormatHint") }}
-              </p>
-            </div>
+          <div class="space-y-1.5">
+            <label
+              class="text-[11px] font-medium uppercase tracking-wide text-muted"
+            >
+              {{ t("scheduler.detail.cronExpression") }}
+            </label>
+            <UInput
+              v-model="createForm.cron"
+              class="w-full font-mono text-sm"
+              :placeholder="t('scheduler.create.cronPlaceholder')"
+            />
+            <p class="text-xs text-muted">
+              {{ t("scheduler.detail.cronFormatHint") }}
+            </p>
+          </div>
 
-            <div class="space-y-3">
-              <div class="grid gap-3 sm:grid-cols-2">
-                <div class="space-y-1.5">
-                  <Label
-                    class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-                  >
-                    {{ t("scheduler.create.type") }}
-                  </Label>
-                  <Select v-model="createForm.endpointType">
-                    <SelectTrigger class="w-full min-w-0">
-                      <SelectValue :placeholder="t('scheduler.create.typePlaceholder')" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem
-                        v-for="opt in endpointTypeOptions"
-                        :key="opt.value"
-                        :value="opt.value"
-                      >
-                        {{ opt.label }}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div class="space-y-1.5">
-                  <Label
-                    class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-                  >
-                    {{ t("scheduler.create.selection") }}
-                  </Label>
-                  <Select
-                    v-model="createForm.endpointPath"
-                    :disabled="!createForm.endpointType"
-                  >
-                    <SelectTrigger class="w-full min-w-0">
-                      <SelectValue :placeholder="createSelectionPlaceholder" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem
-                        v-for="opt in createSelectionOptions"
-                        :key="opt.value"
-                        :value="opt.value"
-                      >
-                        {{ opt.label }}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div class="relative py-1">
-                <Separator class="bg-border" />
-                <span
-                  class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase"
-                >
-                  {{ t("scheduler.create.orDivider") }}
-                </span>
-              </div>
-
+          <div class="space-y-3">
+            <div class="grid gap-3 sm:grid-cols-2">
               <div class="space-y-1.5">
-                <Input
-                  v-model="createForm.customEndpointUrl"
-                  class="font-mono text-sm"
-                  :placeholder="t('scheduler.create.customEndpointPlaceholder')"
-                  autocomplete="off"
-                />
-                <p class="text-xs text-muted-foreground">
-                  {{ t("scheduler.create.customEndpointHint") }}
-                </p>
-              </div>
-            </div>
-
-            <div class="space-y-1.5">
-              <Label
-                class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-              >
-                {{ t("scheduler.detail.httpMethod") }}
-              </Label>
-              <Select v-model="createForm.httpMethod">
-                <SelectTrigger class="w-full min-w-0 font-mono">
-                  <SelectValue :placeholder="t('scheduler.detail.methodPlaceholder')" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="GET">
-                    GET
-                  </SelectItem>
-                  <SelectItem value="POST">
-                    POST
-                  </SelectItem>
-                  <SelectItem value="PUT">
-                    PUT
-                  </SelectItem>
-                  <SelectItem value="PATCH">
-                    PATCH
-                  </SelectItem>
-                  <SelectItem value="DELETE">
-                    DELETE
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div class="space-y-1.5">
-              <div class="flex items-center justify-between gap-2">
-                <div class="flex items-center gap-1.5">
-                  <Label
-                    class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-                  >
-                    {{ t("scheduler.detail.payload") }}
-                  </Label>
-                  <Tooltip>
-                    <TooltipTrigger as-child>
-                      <button
-                        type="button"
-                        class="text-muted-foreground/80 outline-none hover:text-muted-foreground"
-                        :aria-label="t('scheduler.detail.payloadInfoAria')"
-                      >
-                        <Info class="size-3.5" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">
-                      {{ t("scheduler.create.payloadTooltip") }}
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  class="h-7 px-2 text-[11px] font-semibold uppercase"
-                  @click="formatCreatePayload"
+                <label
+                  class="text-[11px] font-medium uppercase tracking-wide text-muted"
                 >
-                  {{ t("scheduler.detail.formatJson") }}
-                </Button>
-              </div>
-              <Textarea
-                v-model="createForm.payloadText"
-                class="min-h-32 resize-y font-mono text-xs leading-relaxed"
-              />
-            </div>
-
-            <div class="space-y-1.5">
-              <Label
-                class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-              >
-                {{ t("scheduler.detail.descriptionOptional") }}
-              </Label>
-              <Textarea
-                v-model="createForm.description"
-                :placeholder="t('scheduler.detail.descriptionPlaceholder')"
-                class="min-h-18 resize-y text-sm"
-              />
-            </div>
-
-            <div class="space-y-1.5">
-              <Label
-                class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-              >
-                {{ t("scheduler.detail.timezone") }}
-              </Label>
-              <Select v-model="createForm.timezone">
-                <SelectTrigger class="w-full min-w-0">
-                  <SelectValue :placeholder="t('scheduler.detail.timezonePlaceholder')" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem
-                    v-for="opt in timezoneOptions"
-                    :key="opt.value"
-                    :value="opt.value"
-                  >
-                    {{ opt.label }}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Collapsible v-model:open="createAdvancedOpen">
-              <CollapsibleTrigger
-                class="flex w-full items-center gap-2 py-1 text-left text-xs font-semibold tracking-wide text-foreground uppercase outline-none hover:opacity-80 dark:text-foreground"
-              >
-                <ChevronDown
-                  class="size-4 shrink-0 text-muted-foreground transition-transform duration-200 dark:text-muted-foreground"
-                  :class="createAdvancedOpen ? 'rotate-180' : ''"
+                  {{ t("scheduler.create.type") }}
+                </label>
+                <USelect
+                  v-model="createForm.endpointType"
+                  :items="endpointTypeOptions"
+                  value-key="value"
+                  label-key="label"
+                  class="w-full min-w-0"
+                  :placeholder="t('scheduler.create.typePlaceholder')"
                 />
-                {{ t("scheduler.detail.advanced") }}
-              </CollapsibleTrigger>
-              <CollapsibleContent class="pt-3 pb-1">
+              </div>
+              <div class="space-y-1.5">
+                <label
+                  class="text-[11px] font-medium uppercase tracking-wide text-muted"
+                >
+                  {{ t("scheduler.create.selection") }}
+                </label>
+                <USelect
+                  v-model="createForm.endpointPath"
+                  :items="createSelectionOptions"
+                  value-key="value"
+                  label-key="label"
+                  class="w-full min-w-0"
+                  :disabled="!createForm.endpointType"
+                  :placeholder="createSelectionPlaceholder"
+                />
+              </div>
+            </div>
+
+            <div class="relative py-1">
+              <USeparator class="bg-default" />
+              <span
+                class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-default px-2 text-[11px] font-medium tracking-wide text-muted uppercase"
+              >
+                {{ t("scheduler.create.orDivider") }}
+              </span>
+            </div>
+
+            <div class="space-y-1.5">
+              <UInput
+                v-model="createForm.customEndpointUrl"
+                class="w-full font-mono text-sm"
+                :placeholder="t('scheduler.create.customEndpointPlaceholder')"
+                autocomplete="off"
+              />
+              <p class="text-xs text-muted">
+                {{ t("scheduler.create.customEndpointHint") }}
+              </p>
+            </div>
+          </div>
+
+          <div class="space-y-1.5">
+            <label
+              class="text-[11px] font-medium uppercase tracking-wide text-muted"
+            >
+              {{ t("scheduler.detail.httpMethod") }}
+            </label>
+            <USelect
+              v-model="createForm.httpMethod"
+              :items="[...httpMethodSelectItems]"
+              value-key="value"
+              label-key="label"
+              class="w-full font-mono"
+            />
+          </div>
+
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-1.5">
+                <label
+                  class="text-[11px] font-medium uppercase tracking-wide text-muted"
+                >
+                  {{ t("scheduler.detail.payload") }}
+                </label>
+                <UTooltip :text="t('scheduler.create.payloadTooltip')">
+                  <UButton
+                    type="button"
+                    variant="ghost"
+                    color="neutral"
+                    size="xs"
+                    square
+                    class="size-7"
+                    icon="i-lucide-info"
+                    :aria-label="t('scheduler.detail.payloadInfoAria')"
+                  />
+                </UTooltip>
+              </div>
+              <UButton
+                type="button"
+                variant="ghost"
+                color="neutral"
+                size="xs"
+                class="h-7 px-2 text-[11px] font-semibold uppercase"
+                @click="formatCreatePayload"
+              >
+                {{ t("scheduler.detail.formatJson") }}
+              </UButton>
+            </div>
+            <UTextarea
+              v-model="createForm.payloadText"
+              :rows="6"
+              autoresize
+              class="min-h-32 w-full resize-y font-mono text-xs leading-relaxed"
+            />
+          </div>
+
+          <div class="space-y-1.5">
+            <label
+              class="text-[11px] font-medium uppercase tracking-wide text-muted"
+            >
+              {{ t("scheduler.detail.descriptionOptional") }}
+            </label>
+            <UTextarea
+              v-model="createForm.description"
+              :placeholder="t('scheduler.detail.descriptionPlaceholder')"
+              :rows="3"
+              autoresize
+              class="min-h-18 w-full resize-y text-sm"
+            />
+          </div>
+
+          <div class="space-y-1.5">
+            <label
+              class="text-[11px] font-medium uppercase tracking-wide text-muted"
+            >
+              {{ t("scheduler.detail.timezone") }}
+            </label>
+            <USelect
+              v-model="createForm.timezone"
+              :items="timezoneSelectItems"
+              value-key="value"
+              label-key="label"
+              class="w-full"
+            />
+          </div>
+
+          <UCollapsible v-model:open="createAdvancedOpen">
+            <button
+              type="button"
+              class="flex w-full items-center gap-2 py-1 text-left text-xs font-semibold tracking-wide text-highlighted uppercase outline-none hover:opacity-80"
+            >
+              <UIcon
+                name="i-lucide-chevron-down"
+                class="size-4 shrink-0 text-muted transition-transform duration-200"
+                :class="createAdvancedOpen ? 'rotate-180' : ''"
+              />
+              {{ t("scheduler.detail.advanced") }}
+            </button>
+            <template #content>
+              <div class="pt-3 pb-1">
                 <div
-                  class="ml-0.5 space-y-4 border-l-2 border-border pl-4"
+                  class="ml-0.5 space-y-4 border-l-2 border-default pl-4"
                 >
                   <div class="space-y-1.5">
-                    <Label
-                      class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                    <label
+                      class="text-[11px] font-medium uppercase tracking-wide text-muted"
                     >
                       {{ t("scheduler.detail.timeoutSeconds") }}
-                    </Label>
-                    <Input
+                    </label>
+                    <UInput
                       v-model.number="createForm.timeoutSeconds"
                       type="number"
                       min="0"
                       step="1"
-                      class="tabular-nums"
+                      class="w-full tabular-nums"
                     />
-                    <p class="text-xs text-muted-foreground">
+                    <p class="text-xs text-muted">
                       {{ t("scheduler.detail.timeoutHint") }}
                     </p>
                   </div>
                   <div class="space-y-1.5">
-                    <Label
-                      class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                    <label
+                      class="text-[11px] font-medium uppercase tracking-wide text-muted"
                     >
                       {{ t("scheduler.detail.maxRetries") }}
-                    </Label>
-                    <Input
+                    </label>
+                    <UInput
                       v-model.number="createForm.maxRetries"
                       type="number"
                       min="0"
                       step="1"
-                      class="tabular-nums"
+                      class="w-full tabular-nums"
                     />
-                    <p class="text-xs text-muted-foreground">
+                    <p class="text-xs text-muted">
                       {{ t("scheduler.detail.maxRetriesHint") }}
                     </p>
                   </div>
                   <div class="space-y-1.5">
-                    <Label
-                      class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                    <label
+                      class="text-[11px] font-medium uppercase tracking-wide text-muted"
                     >
                       {{ t("scheduler.detail.retryDelaySeconds") }}
-                    </Label>
-                    <Input
+                    </label>
+                    <UInput
                       v-model.number="createForm.retryDelaySeconds"
                       type="number"
                       min="0"
                       step="1"
-                      class="tabular-nums"
+                      class="w-full tabular-nums"
                     />
-                    <p class="text-xs text-muted-foreground">
+                    <p class="text-xs text-muted">
                       {{ t("scheduler.detail.retryDelayHint") }}
                     </p>
                   </div>
                 </div>
-              </CollapsibleContent>
-            </Collapsible>
-          </div>
+              </div>
+            </template>
+          </UCollapsible>
         </div>
+      </template>
 
-        <DialogFooter
-          class="shrink-0 flex-row items-center justify-between gap-3 border-t border-border bg-muted/40 px-6 py-4 dark:bg-muted/20 sm:justify-between"
+      <template #footer>
+        <div
+          class="flex w-full flex-row items-center justify-between gap-3 px-6 py-4 sm:justify-between"
         >
-          <Button
+          <UButton
             type="button"
-            variant="secondary"
+            color="neutral"
+            variant="subtle"
             class="text-xs font-semibold uppercase"
             @click="cancelCreateDialog"
           >
             {{ t("common.cancel") }}
-          </Button>
-          <Button
+          </UButton>
+          <UButton
             type="button"
+            color="primary"
+            variant="solid"
             class="text-xs font-semibold uppercase"
             @click="submitCreateSchedule"
           >
             {{ t("scheduler.create.submit") }}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </UButton>
+        </div>
+      </template>
+    </UModal>
   </AppPageScaffold>
 </template>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { createColumnHelper } from "@tanstack/vue-table"
-import { computed, h, nextTick, onMounted, ref } from "vue"
+import type { DropdownMenuItem, TableColumn } from "@nuxt/ui"
+import { computed, h, nextTick, onMounted, ref, resolveComponent } from "vue"
 import { useI18n } from "vue-i18n"
 import {
   deleteOpenFoxSkillAPI,
@@ -10,37 +10,15 @@ import {
   uploadOpenFoxSkillAPI,
   type OpenFoxSkillInfo,
 } from "@/api/os"
-import AppPageScaffold from "@/components/AppPageScaffold.vue"
-import { DataTable } from "@/components/ui/data-table"
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 import { getAgentOsBaseUrl } from "@/composables/request"
 import { useAppState } from "@/composables/store"
-import { cn } from "@/lib/utils"
-import { MoreVertical, RefreshCw } from "lucide-vue-next"
 
 const { t, locale } = useI18n()
 const app = useAppState()
+
+const USwitchComp = resolveComponent("USwitch")
+const UDropdownMenuComp = resolveComponent("UDropdownMenu")
+const UButtonComp = resolveComponent("UButton")
 
 const items = ref<OpenFoxSkillInfo[]>([])
 const loading = ref(false)
@@ -53,7 +31,6 @@ const deleteConfirmOpen = ref(false)
 const pendingDeleteName = ref<string | null>(null)
 const togglingFolder = ref<string | null>(null)
 
-/** 磁盘上的技能目录名（可能与 SKILL.md 的 name 不同，例如停用时常以「-」结尾） */
 function skillDiskFolder(s: OpenFoxSkillInfo): string {
   const normalized = s.path.replace(/\\/g, "/")
   const parts = normalized.split("/").filter(Boolean)
@@ -62,42 +39,6 @@ function skillDiskFolder(s: OpenFoxSkillInfo): string {
 
 function skillRowId(row: OpenFoxSkillInfo) {
   return row.path
-}
-
-/** 操作列：悬停展开下拉（单行仅一个菜单打开） */
-const openActionsForName = ref<string | null>(null)
-let actionsHoverCloseTimer: ReturnType<typeof setTimeout> | null = null
-const ACTIONS_HOVER_CLOSE_MS = 200
-
-function clearActionsHoverCloseTimer() {
-  if (actionsHoverCloseTimer) {
-    clearTimeout(actionsHoverCloseTimer)
-    actionsHoverCloseTimer = null
-  }
-}
-
-function scheduleActionsMenuClose() {
-  clearActionsHoverCloseTimer()
-  actionsHoverCloseTimer = setTimeout(() => {
-    openActionsForName.value = null
-  }, ACTIONS_HOVER_CLOSE_MS)
-}
-
-function showActionsMenu(name: string) {
-  clearActionsHoverCloseTimer()
-  openActionsForName.value = name
-}
-
-function onActionsMenuOpenChange(open: boolean) {
-  if (!open) {
-    openActionsForName.value = null
-    clearActionsHoverCloseTimer()
-  }
-}
-
-function onActionsContentPointerEnter(name: string) {
-  clearActionsHoverCloseTimer()
-  openActionsForName.value = name
 }
 
 const fileUploadRef = ref<HTMLInputElement | null>(null)
@@ -118,25 +59,18 @@ async function loadList(opts?: { silent?: boolean }) {
     pageError.value = t("skills.needLoginOs")
     return
   }
-  if (!silent) {
-    loading.value = true
-  }
+  if (!silent) loading.value = true
   pageError.value = null
   try {
     const r = await listOpenFoxSkillsAPI(base, token)
     if (!r.ok) {
-      pageError.value = t("skills.loadFailed", {
-        status: r.status,
-        message: r.message,
-      })
+      pageError.value = t("skills.loadFailed", { status: r.status, message: r.message })
       return
     }
     items.value = r.data
     await nextTick()
   } finally {
-    if (!silent) {
-      loading.value = false
-    }
+    if (!silent) loading.value = false
   }
 }
 
@@ -148,105 +82,163 @@ async function onToggleActivate(diskFolder: string, activate: boolean) {
     return
   }
   const row = items.value.find((s) => skillDiskFolder(s) === diskFolder)
-  if (row && row.activate === activate) {
-    return
-  }
+  if (row && row.activate === activate) return
   togglingFolder.value = diskFolder
   pageError.value = null
   pageSuccess.value = null
   try {
     const r = await patchOpenFoxSkillActivateAPI(base, token, diskFolder, activate)
     if (!r.ok) {
-      pageError.value = t("skills.toggleFailed", {
-        status: r.status,
-        message: r.message,
-      })
+      pageError.value = t("skills.toggleFailed", { status: r.status, message: r.message })
       return
     }
     pageSuccess.value = t("skills.activateUpdated", { name: r.skill.name })
-    // 必须整表替换 data：原地 splice 往往不触发 @tanstack/vue-table 与表格状态同步，
-    // 界面会停在旧行；silent 避免 loading 造成闪烁。
     await loadList({ silent: true })
   } finally {
     togglingFolder.value = null
   }
 }
 
-const columnHelper = createColumnHelper<OpenFoxSkillInfo>()
-
-const tableColumns = computed(() => {
+const tableColumns = computed<TableColumn<OpenFoxSkillInfo>[]>(() => {
   void locale.value
   return [
-  columnHelper.accessor("activate", {
-    header: t("skills.colActivate"),
-    // 开关在模板中渲染，直接绑定 row.original，避免 FlexRender/非响应式 table 导致陈旧
-    cell: () => null,
-  }),
-  columnHelper.accessor("name", {
-    header: t("skills.colName"),
-    cell: (ctx) =>
-      h(
-        "span",
-        {
-          class:
-            "block min-w-0 max-w-full break-words line-clamp-2 wrap-break-word font-mono text-sm font-medium text-foreground",
-        },
-        ctx.getValue(),
-      ),
-  }),
-  columnHelper.accessor("description", {
-    header: t("skills.colDescription"),
-    cell: (ctx) => {
-      const text = String(ctx.getValue() ?? "")
-      return h(
-        "span",
-        {
-          class:
-            "block min-w-0 max-w-full truncate text-sm text-foreground",
-          title: text,
-        },
-        text,
-      )
+    {
+      id: "activate",
+      header: t("skills.colActivate"),
+      meta: { class: { th: "w-16 shrink-0", td: "w-16 shrink-0" } },
+      cell: ({ row }) =>
+        h(USwitchComp as any, {
+          "modelValue": row.original.activate,
+          "size": "sm",
+          "disabled": togglingFolder.value === skillDiskFolder(row.original) || !hasOsAuth.value,
+          "onUpdate:modelValue": (v: boolean) => onToggleActivate(skillDiskFolder(row.original), v),
+        }),
     },
-  }),
-  columnHelper.accessor("path", {
-    header: t("skills.colPath"),
-    cell: (ctx) => {
-      const p = ctx.getValue()
-      return h(
-        "span",
-        {
-          class:
-            "block min-w-0 max-w-full truncate font-mono text-sm text-foreground",
-          title: p,
+    {
+      accessorKey: "name",
+      header: t("skills.colName"),
+      meta: {
+        class: {
+          th: "w-[10rem] min-w-0 shrink-0 font-mono",
+          td: "min-w-0 max-w-0 overflow-hidden",
         },
-        p,
-      )
+      },
+      cell: ({ row }) => {
+        const name = row.original.name
+        return h(
+          "span",
+          {
+            class:
+              "block w-full min-w-0 truncate font-mono text-sm font-medium text-foreground",
+            title: name,
+          },
+          name,
+        )
+      },
     },
-  }),
-  columnHelper.accessor("license", {
-    header: t("skills.colLicense"),
-    cell: (ctx) => {
-      const v = ctx.getValue()
-      const s = typeof v === "string" ? v.trim() : ""
-      return h(
-        "span",
-        { class: "whitespace-nowrap text-sm text-muted-foreground" },
-        s || t("skills.emptyCell"),
-      )
+    {
+      accessorKey: "description",
+      header: t("skills.colDescription"),
+      meta: {
+        class: {
+          th: "min-w-0 w-[38%]",
+          td: "min-w-0 max-w-0 overflow-hidden",
+        },
+      },
+      cell: ({ row }) => {
+        const text = String(row.original.description ?? "")
+        return h(
+          "span",
+          {
+            class:
+              "block w-full min-w-0 truncate text-sm text-muted-foreground",
+            title: text,
+          },
+          text,
+        )
+      },
     },
-  }),
-  columnHelper.display({
-    id: "actions",
-    header: () =>
-      h(
-        "span",
-        { class: "block w-full text-right font-medium" },
-        t("skills.colActions"),
-      ),
-    cell: () => null,
-  }),
-]
+    {
+      accessorKey: "path",
+      header: t("skills.colPath"),
+      meta: {
+        class: {
+          th: "min-w-0 w-[34%] font-mono",
+          td: "min-w-0 max-w-0 overflow-hidden",
+        },
+      },
+      cell: ({ row }) =>
+        h(
+          "span",
+          {
+            class:
+              "block w-full min-w-0 truncate font-mono text-sm text-muted-foreground",
+            title: row.original.path,
+          },
+          row.original.path,
+        ),
+    },
+    {
+      accessorKey: "license",
+      header: t("skills.colLicense"),
+      meta: {
+        class: {
+          th: "w-24 shrink-0",
+          td: "w-24 min-w-0 max-w-0 shrink-0 overflow-hidden",
+        },
+      },
+      cell: ({ row }) => {
+        const v = row.original.license
+        const s = typeof v === "string" ? v.trim() : ""
+        const shown = s || t("skills.emptyCell")
+        return h(
+          "span",
+          {
+            class:
+              "block w-full min-w-0 truncate text-sm tabular-nums text-muted-foreground",
+            title: s ? s : undefined,
+          },
+          shown,
+        )
+      },
+    },
+    {
+      id: "actions",
+      header: () => h("span", { class: "block w-full text-right" }, t("skills.colActions")),
+      meta: { class: { th: "w-14 shrink-0 pr-2 text-right", td: "w-14 shrink-0 pr-2 text-right" } },
+      cell: ({ row }) => {
+        const folder = skillDiskFolder(row.original)
+        const dropdownItems: DropdownMenuItem[][] = [[
+          {
+            label: replacingName.value === folder ? t("skills.updating") : t("skills.update"),
+            disabled: replacingName.value === folder || uploading.value,
+            onSelect: () => triggerReplace(folder),
+          },
+          {
+            label: t("common.delete"),
+            color: "error" as const,
+            disabled: deletingName.value === folder,
+            onSelect: () => requestDelete(folder),
+          },
+        ]]
+        return h("div", { class: "flex justify-end" }, [
+          h(UDropdownMenuComp as any, {
+            items: dropdownItems,
+            modal: false,
+            content: { align: "end" },
+          }, {
+            default: () => h(UButtonComp as any, {
+              variant: "ghost",
+              color: "neutral",
+              size: "sm",
+              icon: "i-lucide-ellipsis-vertical",
+              square: true,
+            }),
+          }),
+        ])
+      },
+    },
+  ]
 })
 
 function triggerUpload() {
@@ -276,10 +268,9 @@ async function onUploadFile(ev: Event) {
   try {
     const r = await uploadOpenFoxSkillAPI(base, token, file)
     if (!r.ok) {
-      pageError.value =
-        r.status === 409
-          ? r.message
-          : t("skills.uploadFailed", { status: r.status, message: r.message })
+      pageError.value = r.status === 409
+        ? r.message
+        : t("skills.uploadFailed", { status: r.status, message: r.message })
       return
     }
     pageSuccess.value = t("skills.installed", { name: r.skill.name })
@@ -307,10 +298,7 @@ async function onReplaceFile(ev: Event) {
   try {
     const r = await replaceOpenFoxSkillAPI(base, token, name, file)
     if (!r.ok) {
-      pageError.value = t("skills.updateFailed", {
-        status: r.status,
-        message: r.message,
-      })
+      pageError.value = t("skills.updateFailed", { status: r.status, message: r.message })
       return
     }
     pageSuccess.value = t("skills.updated", { name: r.skill.name })
@@ -342,10 +330,7 @@ async function confirmDelete() {
   try {
     const r = await deleteOpenFoxSkillAPI(base, token, name)
     if (!r.ok) {
-      pageError.value = t("skills.deleteFailed", {
-        status: r.status,
-        message: r.message,
-      })
+      pageError.value = t("skills.deleteFailed", { status: r.status, message: r.message })
       return
     }
     pageSuccess.value = t("skills.deleted", { name })
@@ -355,40 +340,6 @@ async function confirmDelete() {
   }
 }
 
-function headerClass(columnId: string) {
-  const base =
-    "text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-  if (columnId === "activate") {
-    return cn("w-16 shrink-0", base)
-  }
-  if (columnId === "name") {
-    return cn("w-[10rem] min-w-0 shrink-0 font-mono", base)
-  }
-  if (columnId === "description") {
-    return cn("min-w-0 w-[38%]", base)
-  }
-  if (columnId === "path") {
-    return cn("min-w-0 w-[34%] font-mono", base)
-  }
-  if (columnId === "license") {
-    return cn("w-24 shrink-0", base)
-  }
-  if (columnId === "actions") {
-    return cn("w-14 shrink-0 pr-2 text-right", base)
-  }
-  return base
-}
-
-function cellClass(columnId: string) {
-  if (columnId === "actions") {
-    return "min-w-0 py-3 pl-2 text-right align-top"
-  }
-  if (columnId === "activate") {
-    return "w-16 shrink-0 py-3 align-top"
-  }
-  return "min-w-0 py-3 align-top"
-}
-
 onMounted(() => {
   if (hasOsAuth.value) {
     void loadList()
@@ -396,47 +347,60 @@ onMounted(() => {
     pageError.value = t("skills.needLoginOs")
   }
 })
+
+/** 与 sessions 页 UTable 一致（紧凑表头 + 斑马线 + 行高） */
+const skillsTableUi = {
+  root: "overflow-x-auto",
+  base: "min-w-full table-fixed",
+  thead: "bg-elevated/40",
+  th: "border-b border-default py-2 px-3 text-sm font-medium text-muted-foreground",
+  tbody: "divide-y divide-default",
+  tr: "odd:bg-default even:bg-elevated/30 hover:bg-elevated/45 dark:even:bg-white/[0.06]",
+  td: "py-2 px-3 text-sm align-middle",
+  separator: "hidden",
+  empty: "py-8 text-sm text-muted-foreground",
+  loading: "py-8 text-sm",
+}
 </script>
 
 <template>
-  <AppPageScaffold content-class="flex min-h-0 flex-col">
-    <div class="flex min-h-0 w-full flex-1 flex-col gap-4">
-      <p
+  <div class="flex min-h-0 flex-1 flex-col overflow-auto bg-background">
+    <div class="w-full space-y-4 p-4 text-foreground md:p-6">
+      <UAlert
         v-if="pageError"
-        class="shrink-0 text-sm text-red-600 dark:text-red-400"
-      >
-        {{ pageError }}
-      </p>
-      <p
+        color="error"
+        variant="subtle"
+        class="shrink-0"
+        :description="pageError"
+      />
+      <UAlert
         v-else-if="pageSuccess"
-        class="shrink-0 text-sm text-emerald-700 dark:text-emerald-400"
-      >
-        {{ pageSuccess }}
-      </p>
-      <p
+        color="success"
+        variant="subtle"
+        class="shrink-0"
+        :description="pageSuccess"
+      />
+      <UAlert
         v-else-if="!hasOsAuth"
-        class="shrink-0 text-sm text-muted-foreground"
-      >
-        {{ t("skills.manageHint") }}
-      </p>
+        color="warning"
+        variant="subtle"
+        class="shrink-0 rounded-lg border-dashed"
+        :description="t('skills.manageHint')"
+      />
 
       <div class="min-w-0 flex-1">
-        <div
-          class="rounded-xl border border-border bg-card shadow-sm"
-        >
+        <div class="overflow-hidden rounded-lg border border-default bg-default shadow-sm">
           <div
-            class="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3"
+            class="flex min-h-12 flex-nowrap items-center justify-between gap-3 overflow-x-auto border-b border-default px-3 py-3 sm:min-h-14 sm:px-4 sm:py-3.5"
           >
-            <span
-              class="text-left text-xs font-normal tracking-normal text-muted-foreground"
-            >
+            <span class="shrink-0 text-xs text-muted-foreground">
               {{
                 loading && !items.length
                   ? t("common.loading")
                   : t("common.itemsInTable", { count: items.length })
               }}
             </span>
-            <div class="flex items-center gap-2">
+            <div class="flex shrink-0 items-center gap-2 sm:gap-3">
               <input
                 ref="fileUploadRef"
                 type="file"
@@ -453,163 +417,78 @@ onMounted(() => {
                 :aria-label="t('skills.uploadZipAria')"
                 @change="onReplaceFile"
               >
-              <Tooltip>
-                <TooltipTrigger as-child>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    type="button"
-                    class="h-9 rounded-lg border-border bg-muted/50 text-xs font-semibold uppercase tracking-wide text-foreground dark:bg-muted/30"
-                    :disabled="!hasOsAuth || uploading"
-                    @click="triggerUpload"
-                  >
-                    {{ uploading ? t("skills.uploading") : t("skills.createSkill") }}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent class="max-w-xs">
-                  {{ t("skills.uploadZipHint") }}
-                </TooltipContent>
-              </Tooltip>
-              <Button
+              <UTooltip :text="t('skills.uploadZipHint')">
+                <UButton
+                  variant="outline"
+                  color="neutral"
+                  size="sm"
+                  :disabled="!hasOsAuth || uploading"
+                  :loading="uploading"
+                  @click="triggerUpload"
+                >
+                  {{ uploading ? t("skills.uploading") : t("skills.createSkill") }}
+                </UButton>
+              </UTooltip>
+              <UButton
                 variant="outline"
-                size="icon"
-                type="button"
-                class="h-9 w-9 shrink-0 rounded-lg border-border bg-muted/50 text-foreground dark:bg-muted/30"
+                color="neutral"
+                size="sm"
+                square
+                icon="i-lucide-refresh-cw"
+                :aria-label="t('skills.refreshList')"
                 :title="t('skills.refreshList')"
                 :disabled="!hasOsAuth || loading"
+                :loading="loading"
                 @click="void loadList()"
-              >
-                <RefreshCw
-                  class="size-4 opacity-70"
-                  :class="loading ? 'animate-spin' : ''"
-                  aria-hidden="true"
-                />
-                <span class="sr-only">{{ t("common.refresh") }}</span>
-              </Button>
+              />
             </div>
           </div>
 
-          <div class="overflow-x-auto">
-            <DataTable
-              :columns="tableColumns"
-              :data="items"
-              table-class="table-fixed"
-              :header-class="headerClass"
-              :cell-class="cellClass"
-              :get-row-id="skillRowId"
-              :loading="loading && !items.length"
-              :loading-label="t('common.loading')"
-              :empty-label="t('skills.emptyTable')"
-            >
-              <template #cell-activate="{ original }">
-                <div class="flex items-center">
-                  <Switch
-                    :model-value="original.activate"
-                    :disabled="
-                      togglingFolder === skillDiskFolder(original) || !hasOsAuth
-                    "
-                    :aria-label="
-                      original.activate
-                        ? t('skills.activateSwitch.disableAria', {
-                            name: original.name,
-                          })
-                        : t('skills.activateSwitch.enableAria', {
-                            name: original.name,
-                          })
-                    "
-                    @update:model-value="
-                      (v) => onToggleActivate(skillDiskFolder(original), v)
-                    "
-                  />
-                </div>
-              </template>
-              <template #cell-actions="{ original }">
-                <div class="flex justify-end">
-                  <DropdownMenu
-                    :modal="false"
-                    :open="openActionsForName === skillDiskFolder(original)"
-                    @update:open="onActionsMenuOpenChange"
-                  >
-                    <DropdownMenuTrigger as-child>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        class="h-8 w-8 shrink-0 text-muted-foreground hover:bg-accent dark:hover:bg-white/10"
-                        :aria-label="t('skills.actionsAria')"
-                        @pointerenter="showActionsMenu(skillDiskFolder(original))"
-                        @pointerleave="scheduleActionsMenuClose()"
-                      >
-                        <MoreVertical class="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      align="end"
-                      class="w-40"
-                      @pointerenter="
-                        onActionsContentPointerEnter(skillDiskFolder(original))
-                      "
-                      @pointerleave="scheduleActionsMenuClose()"
-                    >
-                      <DropdownMenuItem
-                        class="text-xs font-semibold uppercase tracking-wide"
-                        :disabled="
-                          replacingName === skillDiskFolder(original) || uploading
-                        "
-                        @select="
-                          () => {
-                            triggerReplace(skillDiskFolder(original))
-                          }
-                        "
-                      >
-                        {{
-                          replacingName === skillDiskFolder(original)
-                            ? t('skills.updating')
-                            : t('skills.update')
-                        }}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        variant="destructive"
-                        class="text-xs font-semibold uppercase tracking-wide"
-                        :disabled="deletingName === skillDiskFolder(original)"
-                        @select="
-                          () => {
-                            requestDelete(skillDiskFolder(original))
-                          }
-                        "
-                      >
-                        {{ t("common.delete") }}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </template>
-            </DataTable>
-          </div>
+          <UTable
+            :data="items"
+            :columns="tableColumns"
+            :loading="loading && !items.length"
+            :get-row-id="skillRowId"
+            :empty="t('skills.emptyTable')"
+            sticky="header"
+            class="w-full min-w-0"
+            :ui="skillsTableUi"
+          >
+            <template #loading>
+              <span class="text-muted-foreground">{{ t("common.loading") }}</span>
+            </template>
+          </UTable>
         </div>
       </div>
-    </div>
 
-    <AlertDialog v-model:open="deleteConfirmOpen">
-      <AlertDialogContent class="sm:max-w-md">
-        <AlertDialogHeader>
-          <AlertDialogTitle>{{ t("skills.deleteTitle") }}</AlertDialogTitle>
-          <AlertDialogDescription>
-            {{ t("skills.deleteDescription", { name: pendingDeleteName }) }}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel @click="pendingDeleteName = null">
-            {{ t("common.cancel") }}
-          </AlertDialogCancel>
-          <Button
-            type="button"
-            variant="destructive"
-            @click="void confirmDelete()"
-          >
-            {{ t("common.delete") }}
-          </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  </AppPageScaffold>
+      <UModal
+        v-model:open="deleteConfirmOpen"
+        :title="t('skills.deleteTitle')"
+        :description="t('skills.deleteDescription', { name: pendingDeleteName })"
+        :close="false"
+      >
+        <template #footer>
+          <div class="flex w-full justify-end gap-2">
+            <UButton
+              color="neutral"
+              variant="outline"
+              size="sm"
+              type="button"
+              @click="deleteConfirmOpen = false; pendingDeleteName = null"
+            >
+              {{ t("common.cancel") }}
+            </UButton>
+            <UButton
+              color="error"
+              size="sm"
+              type="button"
+              @click="void confirmDelete()"
+            >
+              {{ t("common.delete") }}
+            </UButton>
+          </div>
+        </template>
+      </UModal>
+    </div>
+  </div>
 </template>

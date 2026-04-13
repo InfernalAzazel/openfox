@@ -77,9 +77,10 @@ export function agentReplyToChatMessage(
   content: string,
   toolCalls: AssistantToolCallTag[] | undefined,
   created_at: number = Date.now(),
+  toolOutputs?: string[],
 ): ChatMessage {
   const tool_calls = toolCalls?.length
-    ? assistantTagsToToolCalls(toolCalls, undefined, created_at)
+    ? assistantTagsToToolCalls(toolCalls, toolOutputs, created_at)
     : undefined
   return {
     role: 'agent',
