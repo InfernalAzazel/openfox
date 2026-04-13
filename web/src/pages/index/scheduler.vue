@@ -162,12 +162,12 @@ watch(
   },
 )
 
-/** Selection 选定后，同步填入下方「自定义 Endpoint」输入框（跳过缺少 Agent ID 的非法路径） */
+/** Selection 选定后，同步填入下方「自定义 Endpoint」输入框 */
 watch(
   () => createForm.value.endpointPath,
   (path) => {
     const p = path?.trim()
-    if (p && !/\/agents\/[^/]+\/runs/.test(p)) {
+    if (p) {
       createForm.value.customEndpointUrl = p
     }
   },
@@ -1508,9 +1508,9 @@ async function onScheduleEnabled(row: ScheduleRow, enabled: boolean) {
       class="max-w-2xl"
       :ui="{
         content:
-          'max-h-[min(90dvh,56rem)] w-[calc(100vw-1.5rem)] max-w-2xl sm:max-w-2xl',
-        body: 'px-6 py-4',
-        footer: 'border-t border-default bg-elevated/40',
+          'flex flex-col max-h-[min(90dvh,56rem)] w-[calc(100vw-1.5rem)] max-w-2xl sm:max-w-2xl',
+        body: 'min-w-0 flex-1 overflow-y-auto overscroll-y-contain px-6 py-5',
+        footer: 'shrink-0 border-t border-default px-6 py-4',
       }"
     >
       <template #description>
@@ -1518,7 +1518,7 @@ async function onScheduleEnabled(row: ScheduleRow, enabled: boolean) {
       </template>
 
       <template #body>
-        <div class="space-y-4">
+        <div class="min-w-0 space-y-4">
           <div class="space-y-1.5">
             <label
               class="text-[11px] font-medium uppercase tracking-wide text-muted"
@@ -1769,14 +1769,11 @@ async function onScheduleEnabled(row: ScheduleRow, enabled: boolean) {
       </template>
 
       <template #footer>
-        <div
-          class="flex w-full flex-row items-center justify-between gap-3 px-6 py-4 sm:justify-between"
-        >
+        <div class="flex w-full items-center justify-end gap-2">
           <UButton
             type="button"
             color="neutral"
-            variant="subtle"
-            class="text-xs font-semibold uppercase"
+            variant="outline"
             @click="cancelCreateDialog"
           >
             {{ t("common.cancel") }}
@@ -1785,7 +1782,6 @@ async function onScheduleEnabled(row: ScheduleRow, enabled: boolean) {
             type="button"
             color="primary"
             variant="solid"
-            class="text-xs font-semibold uppercase"
             @click="submitCreateSchedule"
           >
             {{ t("scheduler.create.submit") }}
