@@ -1,0 +1,117 @@
+{
+  "reader": {
+    "id": "docling",
+    "name": "DoclingReader",
+    "description": "Converts multiple document formats like PDF, DOCX, PPTX, images, HTML, etc. using IBM's Docling library",
+    "chunkers": [
+      "AgenticChunker",
+      "CodeChunker",
+      "DocumentChunker",
+      "FixedSizeChunker",
+      "RecursiveChunker",
+      "SemanticChunker"
+    ]
+  },
+  "chunkers": {
+    "AgenticChunker": {
+      "key": "AgenticChunker",
+      "name": "AgenticChunker",
+      "description": "Chunking strategy that uses an LLM to determine natural breakpoints in the text",
+      "metadata": {
+        "chunk_size": 5000
+      }
+    },
+    "CodeChunker": {
+      "key": "CodeChunker",
+      "name": "CodeChunker",
+      "description": "The CodeChunker splits code into chunks based on its structure, leveraging Abstract Syntax Trees (ASTs) to create contextually relevant segments",
+      "metadata": {
+        "chunk_size": 2048
+      }
+    },
+    "DocumentChunker": {
+      "key": "DocumentChunker",
+      "name": "DocumentChunker",
+      "description": "A chunking strategy that splits text based on document structure like paragraphs and sections",
+      "metadata": {
+        "chunk_size": 5000,
+        "chunk_overlap": 0
+      }
+    },
+    "FixedSizeChunker": {
+      "key": "FixedSizeChunker",
+      "name": "FixedSizeChunker",
+      "description": "Chunking strategy that splits text into fixed-size chunks with optional overlap",
+      "metadata": {
+        "chunk_size": 5000,
+        "chunk_overlap": 0
+      }
+    },
+    "RecursiveChunker": {
+      "key": "RecursiveChunker",
+      "name": "RecursiveChunker",
+      "description": "Chunking strategy that recursively splits text into chunks by finding natural break points",
+      "metadata": {
+        "chunk_size": 5000,
+        "chunk_overlap": 0
+      }
+    },
+    "SemanticChunker": {
+      "key": "SemanticChunker",
+      "name": "SemanticChunker",
+      "description": "Chunking strategy that splits text into semantic chunks using chonkie",
+      "metadata": {
+        "chunk_size": 5000
+      }
+    }
+  },
+  "readersForType": {
+    "document": [
+      "pdf",
+      "docx",
+      "pptx",
+      "xlsx",
+      "md",
+      "markdown",
+      "asciidoc",
+      "latex",
+      "html",
+      "xhtml",
+      "csv",
+      "txt"
+    ],
+    "image": [
+      "png",
+      "jpg",
+      "jpeg",
+      "tiff",
+      "bmp",
+      "webp"
+    ],
+    "audio": [
+      "wav",
+      "mp3",
+      "m4a",
+      "aac",
+      "ogg",
+      "flac"
+    ],
+    "video": [
+      "mp4",
+      "avi",
+      "mov"
+    ],
+    "structured": [
+      "xml",
+      "json",
+      "vtt"
+    ]
+  },
+  "defaultChunker": {
+    "document": "DocumentChunker",
+    "image": "SemanticChunker",
+    "audio": "SemanticChunker",
+    "video": "SemanticChunker",
+    "structured": "RecursiveChunker"
+  }
+}

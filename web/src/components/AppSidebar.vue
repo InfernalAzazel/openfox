@@ -27,6 +27,18 @@ const items = computed<NavigationMenuItem[][]>(() => [
       active: route.path === "/sessions",
     },
     {
+      label: t("routes.memory"),
+      icon: "i-lucide-brain",
+      to: "/memory",
+      active: route.path === "/memory",
+    },
+    {
+      label: t("routes.knowledge"),
+      icon: "i-lucide-book-open-text",
+      to: "/knowledge",
+      active: route.path === "/knowledge",
+    },
+    {
       label: t("routes.usage"),
       icon: "i-lucide-chart-bar",
       to: "/usage",

@@ -48,6 +48,20 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '//knowledge': RouteRecordInfo<
+      '//knowledge',
+      '/knowledge',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '//memory': RouteRecordInfo<
+      '//memory',
+      '/memory',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '//scheduler': RouteRecordInfo<
       '//scheduler',
       '/scheduler',
@@ -111,6 +125,18 @@ declare module 'vue-router/auto-routes' {
     'src/pages/index/docs.vue': {
       routes:
         | '//docs'
+      views:
+        | never
+    }
+    'src/pages/index/knowledge.vue': {
+      routes:
+        | '//knowledge'
+      views:
+        | never
+    }
+    'src/pages/index/memory.vue': {
+      routes:
+        | '//memory'
       views:
         | never
     }

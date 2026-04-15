@@ -47,6 +47,26 @@ export const APIRoutes = {
   OpenFoxConfig: (agentOSUrl: string) =>
     `${agentOSUrl.replace(/\/$/, '')}/expand/config`,
 
+  /** @see OpenAPI tag `Memory` */
+  GetUserMemoryStats: (agentOSUrl: string) => `${agentOSUrl.replace(/\/$/, '')}/user_memory_stats`,
+  ListMemories: (agentOSUrl: string) => `${agentOSUrl.replace(/\/$/, '')}/memories`,
+  CreateMemory: (agentOSUrl: string) => `${agentOSUrl.replace(/\/$/, '')}/memories`,
+  DeleteMemories: (agentOSUrl: string) => `${agentOSUrl.replace(/\/$/, '')}/memories`,
+  GetMemory: (agentOSUrl: string, memoryId: string) =>
+    `${agentOSUrl.replace(/\/$/, '')}/memories/${encodeURIComponent(memoryId)}`,
+  UpdateMemory: (agentOSUrl: string, memoryId: string) =>
+    `${agentOSUrl.replace(/\/$/, '')}/memories/${encodeURIComponent(memoryId)}`,
+  DeleteMemory: (agentOSUrl: string, memoryId: string) =>
+    `${agentOSUrl.replace(/\/$/, '')}/memories/${encodeURIComponent(memoryId)}`,
+
+  /** @see OpenAPI tag `Knowledge` */
+  KnowledgeConfig: (agentOSUrl: string) => `${agentOSUrl.replace(/\/$/, '')}/knowledge/config`,
+  KnowledgeContent: (agentOSUrl: string) => `${agentOSUrl.replace(/\/$/, '')}/knowledge/content`,
+  KnowledgeContentById: (agentOSUrl: string, contentId: string) =>
+    `${agentOSUrl.replace(/\/$/, '')}/knowledge/content/${encodeURIComponent(contentId)}`,
+  KnowledgeContentStatus: (agentOSUrl: string, contentId: string) =>
+    `${agentOSUrl.replace(/\/$/, '')}/knowledge/content/${encodeURIComponent(contentId)}/status`,
+
   /** OpenFox: `GET` / `POST` `/skills`, `PATCH /skills/activate/{name}`, `PUT` / `DELETE` `/skills/{name}` */
   OpenFoxSkills: (agentOSUrl: string) =>
     `${agentOSUrl.replace(/\/$/, '')}/expand/skills`,

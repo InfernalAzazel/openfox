@@ -280,7 +280,7 @@ const columns = computed<TableColumn<SessionEntry>[]>(() => [
                 ? "i-lucide-arrow-up-narrow-wide"
                 : "i-lucide-arrow-down-wide-narrow")
             : "i-lucide-arrow-up-down",
-          class: "-mx-2.5 h-8 text-sm font-medium",
+          class: "-mx-2.5 text-xs font-semibold uppercase tracking-wider",
           onClick: () =>
             column.toggleSorting(column.getIsSorted() === "asc"),
         }),
@@ -320,7 +320,7 @@ const sessionsTableUi = {
   base: "min-w-full table-fixed",
   thead: "bg-elevated/40",
   /** 每个 th 底边形成表头与表体分隔（隐藏了组件内 separator 行后需自行画线） */
-  th: "border-b border-default py-2 px-3 text-sm font-medium text-muted-foreground",
+  th: "border-b border-default py-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground",
   tbody: "divide-y divide-default",
   /** 斑马线：奇偶行底色交替；选中行略加重 */
   tr: "odd:bg-default even:bg-elevated/30 data-[selected=true]:bg-primary/10 hover:bg-elevated/45 dark:even:bg-white/[0.06]",

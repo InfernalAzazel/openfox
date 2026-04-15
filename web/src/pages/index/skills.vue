@@ -353,7 +353,7 @@ const skillsTableUi = {
   root: "overflow-x-auto",
   base: "min-w-full table-fixed",
   thead: "bg-elevated/40",
-  th: "border-b border-default py-2 px-3 text-sm font-medium text-muted-foreground",
+  th: "border-b border-default py-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground",
   tbody: "divide-y divide-default",
   tr: "odd:bg-default even:bg-elevated/30 hover:bg-elevated/45 dark:even:bg-white/[0.06]",
   td: "py-2 px-3 text-sm align-middle",
