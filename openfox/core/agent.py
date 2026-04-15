@@ -1,3 +1,5 @@
+import logging
+
 from agno.agent import Agent
 from agno.db.sqlite import AsyncSqliteDb
 from agno.models.litellm import LiteLLM
@@ -18,11 +20,11 @@ from openfox.utils.notify import send_notification
 from openfox.utils.skills import LocalSkills
 from openfox.utils.web_static import install_web_routes
 
-
 class OpenFoxAgent:
     """Wires OpenFox config, storage, tools, and AgentOS runtime."""
     
     def __init__(self):
+
         self.config_tools = ConfigTools()
         self.config = self.config_tools.load()
         self.feishu_tools = FeishuTools()

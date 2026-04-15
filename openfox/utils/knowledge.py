@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -10,6 +11,30 @@ try:
     import litellm
 except ImportError as e:
     raise ImportError("`litellm` not installed. Please install it via `pip install litellm`.") from e
+
+# Suppress LiteLLM's extra debug/help text output on exceptions.
+litellm.suppress_debug_info = True
+
+
+class _LiteLLMRerankDashscopeFilter(logging.Filter):
+    """Filter out known noisy LiteLLM dashscope rerank error."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        message = record.getMessage()
+        return (
+            "LiteLLM rerank error: litellm.APIConnectionError: Unsupported provider: dashscope"
+            not in message
+        )
+
+
+def _configure_knowledge_logger_filter() -> None:
+    for f in logger.filters:
+        if isinstance(f, _LiteLLMRerankDashscopeFilter):
+            return
+    logger.addFilter(_LiteLLMRerankDashscopeFilter())
+
+
+_configure_knowledge_logger_filter()
 
 
 @dataclass

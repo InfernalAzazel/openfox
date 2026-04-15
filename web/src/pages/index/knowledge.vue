@@ -621,7 +621,7 @@ function appendUploadFields(fd: FormData, item: FileUploadItem | WebUrlItem) {
   if (item.description.trim()) fd.append("description", item.description.trim())
   if (item.readerId) fd.append("reader_id", item.readerId)
   if (item.chunkingEnabled && item.chunkerId) {
-    fd.append("chunker_id", item.chunkerId)
+    fd.append("chunker", item.chunkerId)
     if (chunkerHasSize(item.chunkerId)) fd.append("chunk_size", String(item.chunkSize))
     if (chunkerHasOverlap(item.chunkerId)) fd.append("chunk_overlap", String(item.chunkOverlap))
   }
