@@ -67,10 +67,10 @@
 
 ## 快速开始
 
-**环境**：Python **3.12+**，建议用 [uv](https://github.com/astral-sh/uv) 安装依赖后进入项目根目录。
+**环境**：Python **3.12+**。直接从 PyPI 安装：
 
 ```bash
-uv sync   # 或 pip install -e .
+pip install openfox
 ```
 
 **首次启动**：若没有 `~/.openfox/config.json`，会先走一轮交互式初始化（API 文档开关、鉴权、`os_security_key`、时区、LLM、飞书等），然后启动服务。

@@ -67,10 +67,10 @@
 
 ## Quick start
 
-**Environment**: Python **3.12+**. Install dependencies with [uv](https://github.com/astral-sh/uv) from the repo root.
+**Environment**: Python **3.12+**. Install from PyPI:
 
 ```bash
-uv sync   # or: pip install -e .
+pip install openfox
 ```
 
 **First run**: If `~/.openfox/config.json` is missing, an interactive setup runs (API docs toggle, auth, `os_security_key`, timezone, LLM, Feishu, etc.), then the server starts.
