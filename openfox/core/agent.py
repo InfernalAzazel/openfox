@@ -11,6 +11,7 @@ from openfox.core.tools import build_openfox_toolkits
 from openfox.interfaces.feishu import Feishu
 from openfox.routers import config
 from openfox.routers import skills
+from openfox.routers import version
 from openfox.tools.config import ConfigTools
 from openfox.tools.feishu import FeishuTools
 from openfox.utils.const import DB_PATH, SKILLS_PATH
@@ -90,4 +91,5 @@ class OpenFoxAgent:
         self.app = self.os.get_app()
         self.app.include_router(config.get_router(self.config_tools, settings))
         self.app.include_router(skills.get_router(self.agent, settings))
+        self.app.include_router(version.get_router(settings))
         install_web_routes(self.app)

@@ -65,7 +65,9 @@ export default {
     toggleHeaderAria: "Toggle sidebar",
     docs: "Docs",
     docsTooltip: "Documentation (GitHub repository)",
-    version: "Version v2026.3.23-2",
+    version: "Version",
+    updateAvailable: "New version {tag} available",
+    checkUpdate: "Check updates on GitHub",
   },
   chat: {
     selectSessionPlaceholder: "Select session",

@@ -66,7 +66,7 @@ class EmbedderConfig(BaseModel):
     api_base: str = Field(default="https://dashscope.aliyuncs.com/compatible-mode/v1", description="API base; empty uses llm.api_base")
     request_params: Optional[Dict[str, Any]] = Field(default=None, description="Extra litellm.embedding params")
     enable_batch: bool = Field(default=False, description="Use batch async embedding when supported")
-    batch_size: int = Field(default=100, description="Batch size")
+    batch_size: int = Field(default=20, description="Batch size")
 
 
 class RerankerConfig(BaseModel):
@@ -86,12 +86,8 @@ class ChromaConfig(BaseModel):
     name: str = Field(default="OpenFox Knowledge", description="Knowledge display name")
     description: str = Field(default="OpenFox Knowledge", description="Description")
     id: Optional[str] = Field(default=None, description="Optional Chroma instance id")
-    path: str = Field(
-        default="chromadb",
-        description="Storage path; relative paths resolve under ~/.openfox",
-    )
     distance: Distance = Field(default=Distance.cosine, description="Distance metric")
-    persistent_client: bool = Field(default=False, description="Use Chroma persistent client")
+    persistent_client: bool = Field(default=True, description="Use Chroma persistent client")
     search_type: SearchType = Field(default=SearchType.vector, description="vector | keyword | hybrid")
     hybrid_rrf_k: int = Field(default=60, description="RRF k for hybrid search")
     batch_size: Optional[int] = Field(default=None, description="Chroma batch size")

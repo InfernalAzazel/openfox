@@ -1,14 +1,173 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from "@nuxt/ui"
-import { computed } from "vue"
+import { computed, onMounted, onUnmounted, ref, watch } from "vue"
 import { useI18n } from "vue-i18n"
 import { useRoute } from "vue-router"
+import { getOpenFoxVersionAPI } from "@/api/os"
+import { getAgentOsBaseUrl } from "@/composables/request"
+import { useAppState } from "@/composables/store"
 
 const { t } = useI18n()
 const route = useRoute()
+const app = useAppState()
 
 const openfoxLogoSrc = `${import.meta.env.BASE_URL}openfox-logo.png`
 const openfoxRepoUrl = "https://github.com/InfernalAzazel/openfox"
+const openfoxTagsUrl = "https://github.com/InfernalAzazel/openfox/tags"
+const githubTagsApi = "https://api.github.com/repos/InfernalAzazel/openfox/tags?per_page=1"
+const jsdelivrTagsApi = "https://data.jsdelivr.com/v1/package/gh/InfernalAzazel/openfox"
+const backendVersion = ref("")
+const latestTagVersion = ref("")
+const latestTagFetchFailed = ref(false)
+
+const versionText = computed(() =>
+  backendVersion.value
+    ? `${t("sidebar.version")} ${backendVersion.value}`
+    : t("sidebar.version"),
+)
+
+function parseTagVersion(raw: string): { y: number; m: number; d: number; patch: number } | null {
+  const m = raw.trim().match(/^v?(\d+)\.(\d+)\.(\d+)(?:-(\d+))?$/)
+  if (!m) return null
+  return {
+    y: Number.parseInt(m[1]!, 10),
+    m: Number.parseInt(m[2]!, 10),
+    d: Number.parseInt(m[3]!, 10),
+    patch: Number.parseInt(m[4] ?? "0", 10),
+  }
+}
+
+function compareTagVersions(aRaw: string, bRaw: string): number {
+  const a = parseTagVersion(aRaw)
+  const b = parseTagVersion(bRaw)
+  if (a && b) {
+    if (a.y !== b.y) return a.y - b.y
+    if (a.m !== b.m) return a.m - b.m
+    if (a.d !== b.d) return a.d - b.d
+    return a.patch - b.patch
+  }
+  return aRaw.localeCompare(bRaw, undefined, { numeric: true, sensitivity: "base" })
+}
+
+function parseBackendVersion(raw: string): { y: number; m: number; d: number; patch: number; isDev: boolean } | null {
+  const m = raw.trim().match(/^(\d+)\.(\d+)\.(\d+)(?:\.post(\d+))?(?:\.dev(\d+))?.*$/)
+  if (!m) return null
+  return {
+    y: Number.parseInt(m[1]!, 10),
+    m: Number.parseInt(m[2]!, 10),
+    d: Number.parseInt(m[3]!, 10),
+    patch: Number.parseInt(m[4] ?? "0", 10),
+    isDev: !!m[5],
+  }
+}
+
+const hasNewVersion = computed(() => {
+  const latestRaw = latestTagVersion.value.trim()
+  const currentRaw = backendVersion.value.trim()
+  if (!latestRaw || !currentRaw) return false
+  const latest = parseTagVersion(latestRaw)
+  const current = parseBackendVersion(currentRaw)
+  if (latest && current) {
+    if (latest.y !== current.y) return latest.y > current.y
+    if (latest.m !== current.m) return latest.m > current.m
+    if (latest.d !== current.d) return latest.d > current.d
+    if (latest.patch !== current.patch) return latest.patch > current.patch
+    // 同 patch 下，release tag 视为高于后端 dev 版本
+    return current.isDev
+  }
+  const latestNoV = latestRaw.replace(/^v/i, "")
+  return !currentRaw.includes(latestRaw) && !currentRaw.includes(latestNoV)
+})
+
+async function refreshVersion() {
+  const base = getAgentOsBaseUrl()
+  const token = app.value.access_token?.trim()
+  if (!base || !token) {
+    backendVersion.value = ""
+    return
+  }
+  const res = await getOpenFoxVersionAPI(base, token)
+  backendVersion.value = res.ok ? res.version : ""
+}
+
+async function refreshLatestTagVersion() {
+  latestTagFetchFailed.value = false
+  const setLatestFromList = (tags: string[]) => {
+    const candidates = tags
+      .map((x) => x.trim())
+      .filter(Boolean)
+    if (!candidates.length) {
+      latestTagVersion.value = ""
+      latestTagFetchFailed.value = true
+      return
+    }
+    candidates.sort((a, b) => compareTagVersions(b, a))
+    const top = candidates[0]!
+    latestTagVersion.value = top.startsWith("v") ? top : `v${top}`
+  }
+
+  try {
+    const githubRes = await fetch(githubTagsApi, { method: "GET" })
+    if (githubRes.ok) {
+      const data = (await githubRes.json()) as Array<{ name?: unknown }>
+      const tags = data
+        .map((x) => (typeof x.name === "string" ? x.name : ""))
+        .filter(Boolean)
+      if (tags.length) {
+        setLatestFromList(tags)
+        return
+      }
+    }
+  } catch {
+    // fallback below
+  }
+
+  try {
+    const jsdRes = await fetch(jsdelivrTagsApi, { method: "GET" })
+    if (!jsdRes.ok) {
+      latestTagVersion.value = ""
+      latestTagFetchFailed.value = true
+      return
+    }
+    const data = (await jsdRes.json()) as { versions?: unknown }
+    const versions = Array.isArray(data.versions)
+      ? data.versions.filter((v): v is string => typeof v === "string")
+      : []
+    setLatestFromList(versions)
+  } catch {
+    latestTagVersion.value = ""
+    latestTagFetchFailed.value = true
+  }
+}
+
+onMounted(() => {
+  void refreshVersion()
+  void refreshLatestTagVersion()
+  window.addEventListener("focus", onWindowFocus)
+})
+
+onUnmounted(() => {
+  window.removeEventListener("focus", onWindowFocus)
+})
+
+watch(
+  () => [app.value.access_token, app.value.os_base_url] as const,
+  () => {
+    void refreshVersion()
+    void refreshLatestTagVersion()
+  },
+)
+
+function onWindowFocus() {
+  void refreshLatestTagVersion()
+}
+
+watch(
+  () => route.fullPath,
+  () => {
+    void refreshLatestTagVersion()
+  },
+)
 
 const items = computed<NavigationMenuItem[][]>(() => [
   [
@@ -163,11 +322,37 @@ const items = computed<NavigationMenuItem[][]>(() => [
       <div
         role="status"
         :aria-label="t('sidebar.footerNav')"
-        class="flex items-center justify-between gap-2 px-2 py-2.5 text-xs text-muted-foreground"
+        class="flex min-w-0 items-center justify-between gap-2 px-2 py-2.5 text-xs text-muted-foreground"
         :class="collapsed ? 'justify-center' : ''"
       >
-        <span v-if="!collapsed" class="min-w-0 truncate tabular-nums">
-          {{ t("sidebar.version") }}
+        <span
+          v-if="!collapsed"
+          class="block min-w-0 flex-1"
+          :title="versionText"
+        >
+          <span class="block truncate tabular-nums">
+            {{ versionText }}
+          </span>
+          <a
+            v-if="hasNewVersion && latestTagVersion"
+            :href="openfoxTagsUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="block truncate text-[11px] text-amber-600 hover:text-amber-500 dark:text-amber-400 dark:hover:text-amber-300"
+            :title="t('sidebar.updateAvailable', { tag: latestTagVersion })"
+          >
+            {{ t("sidebar.updateAvailable", { tag: latestTagVersion }) }}
+          </a>
+          <a
+            v-else-if="latestTagFetchFailed"
+            :href="openfoxTagsUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="block truncate text-[11px] text-muted-foreground hover:text-foreground"
+            :title="t('sidebar.checkUpdate')"
+          >
+            {{ t("sidebar.checkUpdate") }}
+          </a>
         </span>
         <span
           class="inline-flex shrink-0 rounded-full bg-emerald-500/90 shadow-sm ring-2 ring-sidebar"

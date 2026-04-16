@@ -63,7 +63,9 @@ export default {
     toggleHeaderAria: "切换侧栏",
     docs: "文档",
     docsTooltip: "文档（GitHub 仓库）",
-    version: "版本 v2026.3.23-2",
+    version: "版本",
+    updateAvailable: "发现新版本 {tag}",
+    checkUpdate: "去 GitHub 检查更新",
   },
   chat: {
     selectSessionPlaceholder: "选择会话",

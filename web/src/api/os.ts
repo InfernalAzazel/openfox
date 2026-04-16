@@ -466,3 +466,31 @@ export async function putOpenFoxConfigAPI(
     return { ok: true }
   }
 }
+
+export type OpenFoxVersionGetResult =
+  | { ok: true; version: string }
+  | { ok: false; status: number; message: string }
+
+export async function getOpenFoxVersionAPI(
+  base: string,
+  authToken: string | undefined,
+): Promise<OpenFoxVersionGetResult> {
+  const res = await agentOsRequest(APIRoutes.OpenFoxVersion(base), {
+    method: 'GET',
+    authToken,
+  })
+  if (!res.ok) {
+    const message = await readAgentOsErrorMessage(res)
+    return { ok: false, status: res.status, message }
+  }
+  try {
+    const data = (await res.json()) as { version?: unknown }
+    const version = typeof data.version === 'string' ? data.version.trim() : ''
+    if (!version) {
+      return { ok: false, status: 500, message: 'Invalid response: missing version' }
+    }
+    return { ok: true, version }
+  } catch {
+    return { ok: false, status: 500, message: 'Invalid JSON response' }
+  }
+}

@@ -46,6 +46,9 @@ export const APIRoutes = {
   /** OpenFox: `GET` / `PUT` `/config` (OpenAPI tag `OpenFox`). */
   OpenFoxConfig: (agentOSUrl: string) =>
     `${agentOSUrl.replace(/\/$/, '')}/expand/config`,
+  /** OpenFox: `GET /expand/version` */
+  OpenFoxVersion: (agentOSUrl: string) =>
+    `${agentOSUrl.replace(/\/$/, '')}/expand/version`,
 
   /** @see OpenAPI tag `Memory` */
   GetUserMemoryStats: (agentOSUrl: string) => `${agentOSUrl.replace(/\/$/, '')}/user_memory_stats`,

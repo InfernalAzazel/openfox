@@ -7,20 +7,11 @@ from typing import Optional
 
 from agno.db.sqlite import AsyncSqliteDb
 from agno.knowledge.knowledge import Knowledge
-from agno.utils.log import logger
 from agno.vectordb.chroma import ChromaDb
 
 from openfox.schemas.config import Config
-from openfox.utils.const import OPENFOX_HOME_PATH
+from openfox.utils.const import CHROMADB_PATH
 from openfox.utils.knowledge import LiteLLMEmbedder, LiteLLMReranker
-
-
-def _resolve_chroma_path(path_str: str) -> str:
-    p = Path(path_str)
-    if p.is_absolute():
-        return str(p.resolve())
-    OPENFOX_HOME_PATH.mkdir(parents=True, exist_ok=True)
-    return str((OPENFOX_HOME_PATH / p).resolve())
 
 
 def _nonempty(s: str) -> bool:
@@ -66,7 +57,7 @@ def build_knowledge(config: Config, contents_db: AsyncSqliteDb) -> Optional[Know
 
     kcfg = config.knowledge
     vc = kcfg.vector_db
-    path = _resolve_chroma_path(vc.path)
+    path = str(CHROMADB_PATH.resolve())
     Path(path).parent.mkdir(parents=True, exist_ok=True)
 
     embedder = _embedder_from_config(config)
