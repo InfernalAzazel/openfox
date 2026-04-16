@@ -67,6 +67,18 @@ export const APIRoutes = {
   KnowledgeContentStatus: (agentOSUrl: string, contentId: string) =>
     `${agentOSUrl.replace(/\/$/, '')}/knowledge/content/${encodeURIComponent(contentId)}/status`,
 
+  /** @see OpenAPI tag `Traces` */
+  Traces: (agentOSUrl: string) => `${agentOSUrl.replace(/\/$/, '')}/traces`,
+  TraceById: (agentOSUrl: string, traceId: string) =>
+    `${agentOSUrl.replace(/\/$/, '')}/traces/${encodeURIComponent(traceId)}`,
+  TraceSessionStats: (agentOSUrl: string) =>
+    `${agentOSUrl.replace(/\/$/, '')}/trace_session_stats`,
+
+  /** @see OpenAPI tag `Evals` */
+  EvalRuns: (agentOSUrl: string) => `${agentOSUrl.replace(/\/$/, '')}/eval-runs`,
+  EvalRunById: (agentOSUrl: string, evalRunId: string) =>
+    `${agentOSUrl.replace(/\/$/, '')}/eval-runs/${encodeURIComponent(evalRunId)}`,
+
   /** OpenFox: `GET` / `POST` `/skills`, `PATCH /skills/activate/{name}`, `PUT` / `DELETE` `/skills/{name}` */
   OpenFoxSkills: (agentOSUrl: string) =>
     `${agentOSUrl.replace(/\/$/, '')}/expand/skills`,

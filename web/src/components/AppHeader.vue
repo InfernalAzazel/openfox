@@ -14,6 +14,8 @@ const CRUMB_I18N_KEY_BY_ROUTE_NAME: Record<string, string> = {
   "//memory": "routes.memory",
   "//knowledge": "routes.knowledge",
   "//skills": "routes.skills",
+  "//traces": "routes.traces",
+  "//evals": "routes.evals",
   "//config": "routes.settingsConfig",
   "//docs": "routes.docs",
 }

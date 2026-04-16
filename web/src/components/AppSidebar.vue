@@ -51,6 +51,18 @@ const items = computed<NavigationMenuItem[][]>(() => [
       active: route.path === "/skills",
     },
     {
+      label: t("routes.traces"),
+      icon: "i-lucide-workflow",
+      to: "/traces",
+      active: route.path === "/traces",
+    },
+    {
+      label: t("routes.evals"),
+      icon: "i-lucide-target",
+      to: "/evals",
+      active: route.path === "/evals",
+    },
+    {
       label: t("routes.scheduler"),
       icon: "i-lucide-sparkles",
       to: "/scheduler",

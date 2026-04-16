@@ -11,14 +11,41 @@ import {
   updateContentAPI,
   deleteContentAPI,
 } from "@/api/knowledge"
+import { getAgentsAPI } from "@/api/os"
 import knowledgeConfig from "@/assets/knowledge_config.json"
 import type { KnowledgeContent } from "@/api/knowledge"
+import type { AgentDetails } from "@/types/os"
 
 const { t } = useI18n()
 const toast = useToast()
 const app = useAppState()
 
 const UCheckbox = resolveComponent("UCheckbox")
+
+const agents = ref<AgentDetails[]>([])
+const selectedAgentId = ref("")
+
+const selectedAgent = computed(() =>
+  agents.value.find((a) => a.id === selectedAgentId.value),
+)
+
+/** 与 Agno 知识库存储约定一致（展示用） */
+const knowledgeTableName = "agno_knowledge"
+
+const knowledgeHeaderMeta = computed(() => {
+  const fullId = selectedAgent.value?.db_id?.trim() || ""
+  return {
+    fullId: fullId || "—",
+    table: knowledgeTableName,
+  }
+})
+
+const knowledgeDbIdEllipsis = computed(() => {
+  const id = knowledgeHeaderMeta.value.fullId
+  if (id === "—") return id
+  const max = 28
+  return id.length <= max ? id : `${id.slice(0, max)}...`
+})
 
 const hasOsAuth = computed(() => {
   const base = getAgentOsBaseUrl()
@@ -30,6 +57,24 @@ function authHeaders() {
   const base = getAgentOsBaseUrl()
   const token = app.value.access_token?.trim()
   return { base, token }
+}
+
+async function refreshAgents() {
+  const { base, token } = authHeaders()
+  if (!base || !token) return
+  try {
+    agents.value = await getAgentsAPI(base, token)
+    if (!agents.value.length) {
+      selectedAgentId.value = ""
+      return
+    }
+    if (!selectedAgentId.value || !agents.value.some((a) => a.id === selectedAgentId.value)) {
+      selectedAgentId.value = agents.value[0]!.id
+    }
+  } catch {
+    agents.value = []
+    selectedAgentId.value = ""
+  }
 }
 
 function formatDateTime(raw?: string | null) {
@@ -162,6 +207,13 @@ const contents = ref<KnowledgeContent[]>([])
 const loadingContents = ref(false)
 const errorMessage = ref<string | null>(null)
 const sortDesc = ref(true)
+const KNOWLEDGE_PAGE_SIZE = 10
+const knowledgePage = ref(1)
+
+const pagedContents = computed(() => {
+  const start = (knowledgePage.value - 1) * KNOWLEDGE_PAGE_SIZE
+  return contents.value.slice(start, start + KNOWLEDGE_PAGE_SIZE)
+})
 
 async function refreshContents() {
   const { base, token } = authHeaders()
@@ -520,6 +572,11 @@ watch(selectedCount, (n) => {
   if (n === 0) batchDeleteConfirmOpen.value = false
 })
 
+watch(contents, (rows) => {
+  const max = Math.max(1, Math.ceil(rows.length / KNOWLEDGE_PAGE_SIZE))
+  if (knowledgePage.value > max) knowledgePage.value = max
+})
+
 // --- Add Content dialog ---
 
 const addDialogOpen = ref(false)
@@ -829,9 +886,20 @@ watch(hasUnfinishedItems, (val) => {
 
 onMounted(() => {
   if (hasOsAuth.value) {
+    void refreshAgents()
     void refreshContents()
   }
 })
+
+watch(
+  () => app.value.access_token,
+  () => {
+    if (hasOsAuth.value) {
+      void refreshAgents()
+      void refreshContents()
+    }
+  },
+)
 
 onUnmounted(() => {
   stopPolling()
@@ -857,6 +925,28 @@ onUnmounted(() => {
     />
 
     <template v-else>
+      <div class="flex w-full flex-wrap items-end gap-x-4 gap-y-3">
+        <div
+          class="inline-grid min-w-0 max-w-full grid-cols-[auto_auto] grid-rows-[auto_auto] gap-x-3 gap-y-0.5 sm:max-w-[min(100%,36rem)] sm:gap-x-4"
+        >
+          <span class="col-start-1 row-start-1 text-xs leading-none text-muted-foreground">
+            {{ t("common.metaDatabase") }}
+          </span>
+          <span class="col-start-2 row-start-1 text-xs leading-none text-muted-foreground">
+            {{ t("common.metaTable") }}
+          </span>
+          <span
+            class="col-start-1 row-start-2 min-w-0 max-w-[min(100%,20rem)] font-mono text-sm leading-snug font-medium whitespace-nowrap sm:max-w-[24rem]"
+            :title="knowledgeHeaderMeta.fullId !== '—' ? knowledgeHeaderMeta.fullId : undefined"
+          >
+            {{ knowledgeDbIdEllipsis }}
+          </span>
+          <span class="col-start-2 row-start-2 font-mono text-sm leading-snug font-medium whitespace-nowrap">
+            {{ knowledgeHeaderMeta.table }}
+          </span>
+        </div>
+      </div>
+
       <div
         class="flex gap-4"
         :class="selectedContent ? 'flex-col lg:flex-row' : ''"
@@ -936,7 +1026,7 @@ onUnmounted(() => {
 
           <UTable
             v-model:row-selection="rowSelection"
-            :data="contents"
+            :data="pagedContents"
             :columns="contentColumns"
             :loading="loadingContents"
             :get-row-id="(row: KnowledgeContent) => row.id"
@@ -953,6 +1043,14 @@ onUnmounted(() => {
               }}</span>
             </template>
           </UTable>
+          <div class="flex justify-end border-t border-default px-3 py-2 sm:px-4">
+            <UPagination
+              v-model:page="knowledgePage"
+              :items-per-page="KNOWLEDGE_PAGE_SIZE"
+              :total="contents.length"
+              size="sm"
+            />
+          </div>
         </div>
 
         <!-- Detail Panel -->

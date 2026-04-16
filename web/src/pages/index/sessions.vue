@@ -21,6 +21,8 @@ const UButton = resolveComponent("UButton")
 const agents = ref<AgentDetails[]>([])
 const selectedAgentId = ref("")
 const sessions = ref<SessionEntry[]>([])
+const SESSIONS_PAGE_SIZE = 10
+const sessionsPage = ref(1)
 const loadingAgents = ref(false)
 const loadingSessions = ref(false)
 /** 会话列表请求失败时展示在表格上方（与调度页红字风格一致） */
@@ -73,6 +75,11 @@ const selectedIds = computed(() =>
 )
 
 const selectedCount = computed(() => selectedIds.value.length)
+
+const pagedSessions = computed(() => {
+  const start = (sessionsPage.value - 1) * SESSIONS_PAGE_SIZE
+  return sessions.value.slice(start, start + SESSIONS_PAGE_SIZE)
+})
 
 function authHeaders() {
   const base = getAgentOsBaseUrl()
@@ -314,6 +321,11 @@ watch(selectedCount, (n) => {
   if (n === 0) deleteConfirmOpen.value = false
 })
 
+watch(sessions, (rows) => {
+  const max = Math.max(1, Math.ceil(rows.length / SESSIONS_PAGE_SIZE))
+  if (sessionsPage.value > max) sessionsPage.value = max
+})
+
 /** 紧凑表格：减轻默认 th/td 的 py-3.5 + p-4，并隐藏 thead 下多余分隔行，避免「条数」与表头之间大块留白 */
 const sessionsTableUi = {
   root: "overflow-x-auto",
@@ -449,7 +461,7 @@ const sessionsTableUi = {
           <UTable
             v-model:sorting="sorting"
             v-model:row-selection="rowSelection"
-            :data="sessions"
+            :data="pagedSessions"
             :columns="columns"
             :loading="loadingSessions"
             :get-row-id="(row: SessionEntry) => sid(row)"
@@ -464,6 +476,14 @@ const sessionsTableUi = {
               }}</span>
             </template>
           </UTable>
+          <div class="flex justify-end border-t border-default px-3 py-2 sm:px-4">
+            <UPagination
+              v-model:page="sessionsPage"
+              :items-per-page="SESSIONS_PAGE_SIZE"
+              :total="sessions.length"
+              size="sm"
+            />
+          </div>
         </div>
 
         <UModal

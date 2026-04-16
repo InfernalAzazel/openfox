@@ -118,10 +118,17 @@ function defaultCreateForm(): CreateScheduleForm {
 const app = useAppState()
 
 const rows = ref<ScheduleRow[]>([])
+const SCHEDULER_PAGE_SIZE = 5
+const schedulerPage = ref(1)
 const schedulesLoading = ref(false)
 const schedulesError = ref<string | null>(null)
 const runsLoading = ref(false)
 const runHistoryList = ref<ScheduleRunEntry[]>([])
+
+const pagedRows = computed(() => {
+  const start = (schedulerPage.value - 1) * SCHEDULER_PAGE_SIZE
+  return rows.value.slice(start, start + SCHEDULER_PAGE_SIZE)
+})
 
 const selectedId = ref<string | null>(null)
 const draft = ref<ScheduleDraft | null>(null)
@@ -421,6 +428,14 @@ watch([detailTab, runHistoryList], () => {
     expandedRunId.value = null
   }
 })
+
+watch(
+  () => rows.value.length,
+  (len) => {
+    const max = Math.max(1, Math.ceil(len / SCHEDULER_PAGE_SIZE))
+    if (schedulerPage.value > max) schedulerPage.value = max
+  },
+)
 
 onMounted(() => {
   void refreshSchedules()
@@ -989,7 +1004,7 @@ async function onScheduleEnabled(row: ScheduleRow, enabled: boolean) {
           </div>
 
           <UTable
-            :data="rows"
+            :data="pagedRows"
             :columns="scheduleColumns"
             :meta="scheduleTableMeta"
             :loading="schedulesLoading"
@@ -1004,6 +1019,14 @@ async function onScheduleEnabled(row: ScheduleRow, enabled: boolean) {
               <span class="text-muted-foreground">{{ t("common.loading") }}</span>
             </template>
           </UTable>
+          <div class="flex justify-end border-t border-default px-3 py-2 sm:px-4">
+            <UPagination
+              v-model:page="schedulerPage"
+              :items-per-page="SCHEDULER_PAGE_SIZE"
+              :total="rows.length"
+              size="sm"
+            />
+          </div>
         </div>
       </div>
 

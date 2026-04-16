@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DropdownMenuItem, TableColumn } from "@nuxt/ui"
-import { computed, h, nextTick, onMounted, ref, resolveComponent } from "vue"
+import { computed, h, nextTick, onMounted, ref, resolveComponent, watch } from "vue"
 import { useI18n } from "vue-i18n"
 import {
   deleteOpenFoxSkillAPI,
@@ -30,6 +30,8 @@ const deletingName = ref<string | null>(null)
 const deleteConfirmOpen = ref(false)
 const pendingDeleteName = ref<string | null>(null)
 const togglingFolder = ref<string | null>(null)
+const SKILLS_PAGE_SIZE = 5
+const skillsPage = ref(1)
 
 function skillDiskFolder(s: OpenFoxSkillInfo): string {
   const normalized = s.path.replace(/\\/g, "/")
@@ -40,6 +42,11 @@ function skillDiskFolder(s: OpenFoxSkillInfo): string {
 function skillRowId(row: OpenFoxSkillInfo) {
   return row.path
 }
+
+const pagedItems = computed(() => {
+  const start = (skillsPage.value - 1) * SKILLS_PAGE_SIZE
+  return items.value.slice(start, start + SKILLS_PAGE_SIZE)
+})
 
 const fileUploadRef = ref<HTMLInputElement | null>(null)
 const fileReplaceRef = ref<HTMLInputElement | null>(null)
@@ -361,6 +368,14 @@ const skillsTableUi = {
   empty: "py-8 text-sm text-muted-foreground",
   loading: "py-8 text-sm",
 }
+
+watch(
+  () => items.value.length,
+  (len) => {
+    const max = Math.max(1, Math.ceil(len / SKILLS_PAGE_SIZE))
+    if (skillsPage.value > max) skillsPage.value = max
+  },
+)
 </script>
 
 <template>
@@ -419,9 +434,10 @@ const skillsTableUi = {
               >
               <UTooltip :text="t('skills.uploadZipHint')">
                 <UButton
-                  variant="outline"
-                  color="neutral"
+                  variant="solid"
+                  color="primary"
                   size="sm"
+                  icon="i-lucide-plus"
                   :disabled="!hasOsAuth || uploading"
                   :loading="uploading"
                   @click="triggerUpload"
@@ -445,7 +461,7 @@ const skillsTableUi = {
           </div>
 
           <UTable
-            :data="items"
+            :data="pagedItems"
             :columns="tableColumns"
             :loading="loading && !items.length"
             :get-row-id="skillRowId"
@@ -458,6 +474,14 @@ const skillsTableUi = {
               <span class="text-muted-foreground">{{ t("common.loading") }}</span>
             </template>
           </UTable>
+          <div class="flex justify-end border-t border-default px-3 py-2 sm:px-4">
+            <UPagination
+              v-model:page="skillsPage"
+              :items-per-page="SKILLS_PAGE_SIZE"
+              :total="items.length"
+              size="sm"
+            />
+          </div>
         </div>
       </div>
 

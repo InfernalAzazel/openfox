@@ -1,0 +1,1 @@
+import{B as e,L as t,b as n,g as r,p as i,xt as a}from"./vue-i18n-DZMKwHN3.js";var o={class:`flex min-h-0 flex-1 flex-col bg-background`},s=n({__name:`AppPageScaffold`,props:{contentClass:{}},setup(n){return(s,c)=>(t(),r(`div`,o,[i(`div`,{class:a([`flex-1 overflow-auto p-6 text-foreground`,n.contentClass])},[e(s.$slots,`default`)],2)]))}});export{s as t};

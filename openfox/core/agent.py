@@ -1,5 +1,3 @@
-import logging
-
 from agno.agent import Agent
 from agno.db.sqlite import AsyncSqliteDb
 from agno.models.litellm import LiteLLM
@@ -19,6 +17,7 @@ from openfox.utils.const import DB_PATH, SKILLS_PATH
 from openfox.utils.notify import send_notification
 from openfox.utils.skills import LocalSkills
 from openfox.utils.web_static import install_web_routes
+from agno.tracing import setup_tracing
 
 class OpenFoxAgent:
     """Wires OpenFox config, storage, tools, and AgentOS runtime."""
@@ -31,7 +30,7 @@ class OpenFoxAgent:
         DB_PATH.parent.mkdir(parents=True, exist_ok=True)
         ensure_skills_from_bundle()
         self.db = AsyncSqliteDb(db_file=str(DB_PATH))
-
+        setup_tracing(self.db)
         self.knowledge = build_knowledge(self.config, self.db)
 
         self.instructions = [

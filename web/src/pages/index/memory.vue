@@ -12,9 +12,11 @@ import {
   deleteMemoryAPI,
   deleteMemoriesBatchAPI,
 } from "@/api/memory"
+import { getAgentsAPI } from "@/api/os"
 import type { UserStats, UserMemory } from "@/api/memory"
 import { getAgentOsBaseUrl } from "@/composables/request"
 import { useAppState } from "@/composables/store"
+import type { AgentDetails } from "@/types/os"
 
 const { t, locale } = useI18n()
 const app = useAppState()
@@ -25,14 +27,20 @@ type ViewLevel = "users" | "memories"
 
 const viewLevel = ref<ViewLevel>("users")
 const selectedUserId = ref("")
+const agents = ref<AgentDetails[]>([])
+const selectedAgentId = ref("")
 
 const userStats = ref<UserStats[]>([])
 const loadingUsers = ref(false)
 const usersTotalCount = ref(0)
+const MEMORY_USERS_PAGE_SIZE = 10
+const usersPage = ref(1)
 
 const memories = ref<UserMemory[]>([])
 const loadingMemories = ref(false)
 const memoriesTotalCount = ref(0)
+const MEMORY_PAGE_SIZE = 10
+const memoriesPage = ref(1)
 
 const selectedMemory = ref<UserMemory | null>(null)
 const editContent = ref("")
@@ -53,6 +61,16 @@ const selectedIds = computed(() =>
 )
 const selectedCount = computed(() => selectedIds.value.length)
 
+const pagedUserStats = computed(() => {
+  const start = (usersPage.value - 1) * MEMORY_USERS_PAGE_SIZE
+  return userStats.value.slice(start, start + MEMORY_USERS_PAGE_SIZE)
+})
+
+const pagedMemories = computed(() => {
+  const start = (memoriesPage.value - 1) * MEMORY_PAGE_SIZE
+  return memories.value.slice(start, start + MEMORY_PAGE_SIZE)
+})
+
 const errorMessage = ref<string | null>(null)
 
 const hasOsAuth = computed(() => {
@@ -65,6 +83,45 @@ function authHeaders() {
   const base = getAgentOsBaseUrl()
   const token = app.value.access_token?.trim()
   return { base, token }
+}
+
+const selectedAgent = computed(() =>
+  agents.value.find((a) => a.id === selectedAgentId.value),
+)
+
+const memoryTableName = "agno_memories"
+
+const memoryHeaderMeta = computed(() => {
+  const fullId = selectedAgent.value?.db_id?.trim() || ""
+  return {
+    fullId: fullId || "—",
+    table: memoryTableName,
+  }
+})
+
+const memoryDbIdEllipsis = computed(() => {
+  const id = memoryHeaderMeta.value.fullId
+  if (id === "—") return id
+  const max = 28
+  return id.length <= max ? id : `${id.slice(0, max)}...`
+})
+
+async function refreshAgents() {
+  const { base, token } = authHeaders()
+  if (!base || !token) return
+  try {
+    agents.value = await getAgentsAPI(base, token)
+    if (!agents.value.length) {
+      selectedAgentId.value = ""
+      return
+    }
+    if (!selectedAgentId.value || !agents.value.some((a) => a.id === selectedAgentId.value)) {
+      selectedAgentId.value = agents.value[0]!.id
+    }
+  } catch {
+    agents.value = []
+    selectedAgentId.value = ""
+  }
 }
 
 function formatDateTime(ts: string | null | undefined): string {
@@ -110,6 +167,7 @@ function selectUser(_e: Event, row: TableRow<UserStats>) {
   selectedUserId.value = row.original.user_id
   selectedMemory.value = null
   viewLevel.value = "memories"
+  memoriesPage.value = 1
   void refreshMemories()
 }
 
@@ -153,6 +211,7 @@ function backToUsers() {
   selectedUserId.value = ""
   selectedMemory.value = null
   rowSelection.value = {}
+  memoriesPage.value = 1
   void refreshUserStats()
 }
 
@@ -546,6 +605,7 @@ const tableUi = {
 
 onMounted(() => {
   if (hasOsAuth.value) {
+    void refreshAgents()
     void refreshUserStats()
   }
 })
@@ -554,6 +614,7 @@ watch(
   () => app.value.access_token,
   () => {
     if (hasOsAuth.value) {
+      void refreshAgents()
       viewLevel.value = "users"
       selectedUserId.value = ""
       selectedMemory.value = null
@@ -566,6 +627,16 @@ watch(selectedCount, (n) => {
   if (n === 0) batchDeleteConfirmOpen.value = false
 })
 
+watch(userStats, (rows) => {
+  const max = Math.max(1, Math.ceil(rows.length / MEMORY_USERS_PAGE_SIZE))
+  if (usersPage.value > max) usersPage.value = max
+})
+
+watch(memories, (rows) => {
+  const max = Math.max(1, Math.ceil(rows.length / MEMORY_PAGE_SIZE))
+  if (memoriesPage.value > max) memoriesPage.value = max
+})
+
 watch(sortDesc, () => {
   if (viewLevel.value === "memories") {
     void refreshMemories()
@@ -576,6 +647,28 @@ watch(sortDesc, () => {
 <template>
   <div class="flex min-h-0 flex-1 flex-col overflow-auto bg-background">
     <div class="w-full space-y-4 p-4 text-foreground md:p-6">
+      <div class="flex w-full flex-wrap items-end gap-x-4 gap-y-3">
+        <div
+          class="inline-grid min-w-0 max-w-full grid-cols-[auto_auto] grid-rows-[auto_auto] gap-x-3 gap-y-0.5 sm:max-w-[min(100%,36rem)] sm:gap-x-4"
+        >
+          <span class="col-start-1 row-start-1 text-xs leading-none text-muted-foreground">
+            {{ t("common.metaDatabase") }}
+          </span>
+          <span class="col-start-2 row-start-1 text-xs leading-none text-muted-foreground">
+            {{ t("common.metaTable") }}
+          </span>
+          <span
+            class="col-start-1 row-start-2 min-w-0 max-w-[min(100%,20rem)] font-mono text-sm leading-snug font-medium whitespace-nowrap sm:max-w-[24rem]"
+            :title="memoryHeaderMeta.fullId !== '—' ? memoryHeaderMeta.fullId : undefined"
+          >
+            {{ memoryDbIdEllipsis }}
+          </span>
+          <span class="col-start-2 row-start-2 font-mono text-sm leading-snug font-medium whitespace-nowrap">
+            {{ memoryHeaderMeta.table }}
+          </span>
+        </div>
+      </div>
+
       <UAlert
         v-if="errorMessage && hasOsAuth"
         color="error"
@@ -633,7 +726,7 @@ watch(sortDesc, () => {
           </div>
 
           <UTable
-            :data="userStats"
+            :data="pagedUserStats"
             :columns="userColumns"
             :loading="loadingUsers"
             :empty="t('memory.emptyUsers')"
@@ -648,6 +741,14 @@ watch(sortDesc, () => {
               }}</span>
             </template>
           </UTable>
+          <div class="flex justify-end border-t border-default px-3 py-2 sm:px-4">
+            <UPagination
+              v-model:page="usersPage"
+              :items-per-page="MEMORY_USERS_PAGE_SIZE"
+              :total="userStats.length"
+              size="sm"
+            />
+          </div>
         </div>
       </template>
 
@@ -740,7 +841,7 @@ watch(sortDesc, () => {
 
             <UTable
               v-model:row-selection="rowSelection"
-              :data="memories"
+              :data="pagedMemories"
               :columns="memoryColumns"
               :loading="loadingMemories"
               :get-row-id="(row: UserMemory) => row.memory_id"
@@ -757,6 +858,14 @@ watch(sortDesc, () => {
                 }}</span>
               </template>
             </UTable>
+            <div class="flex justify-end border-t border-default px-3 py-2 sm:px-4">
+              <UPagination
+                v-model:page="memoriesPage"
+                :items-per-page="MEMORY_PAGE_SIZE"
+                :total="memories.length"
+                size="sm"
+              />
+            </div>
           </div>
 
           <!-- Right: Detail Panel (Level 3) -->

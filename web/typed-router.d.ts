@@ -48,6 +48,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '//evals': RouteRecordInfo<
+      '//evals',
+      '/evals',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '//knowledge': RouteRecordInfo<
       '//knowledge',
       '/knowledge',
@@ -79,6 +86,13 @@ declare module 'vue-router/auto-routes' {
     '//skills': RouteRecordInfo<
       '//skills',
       '/skills',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '//traces': RouteRecordInfo<
+      '//traces',
+      '/traces',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -128,6 +142,12 @@ declare module 'vue-router/auto-routes' {
       views:
         | never
     }
+    'src/pages/index/evals.vue': {
+      routes:
+        | '//evals'
+      views:
+        | never
+    }
     'src/pages/index/knowledge.vue': {
       routes:
         | '//knowledge'
@@ -155,6 +175,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/index/skills.vue': {
       routes:
         | '//skills'
+      views:
+        | never
+    }
+    'src/pages/index/traces.vue': {
+      routes:
+        | '//traces'
       views:
         | never
     }

@@ -445,6 +445,13 @@ function onChatPromptSubmit() {
   void sendMessage()
 }
 
+function onChatPromptKeydown(event: KeyboardEvent) {
+  if (event.isComposing) return
+  if (event.key !== "Enter" || event.shiftKey) return
+  // UChatPrompt 默认 Enter 提交；这里仅阻断提交事件传播，保留 textarea 的换行默认行为
+  event.stopPropagation()
+}
+
 function onChatPromptStop() {
   cancelAgentTypewriter?.()
   cancelAgentTypewriter = null
@@ -643,6 +650,7 @@ function isAgentToolCallsRow(row: UiChatRow) {
             :autofocus="false"
             class="rounded-xl shadow-lg shadow-foreground/5 dark:shadow-none"
             @submit="onChatPromptSubmit"
+            @keydown.capture="onChatPromptKeydown"
           >
             <!-- 默认插槽 → 内部 UTextarea，用于右下角提交（见 https://ui.nuxt.com/docs/components/chat-prompt ） -->
             <UChatPromptSubmit
