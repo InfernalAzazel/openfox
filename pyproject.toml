@@ -8,10 +8,10 @@ dynamic = ["version"]
 description = "Self-hosted personal AI assistant with Feishu integration, a built-in web console, and LiteLLM multi-model support."
 readme = "README.md"
 requires-python = ">=3.12"
+license = "Apache-2.0"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
@@ -64,6 +64,13 @@ dev = [
 
 [tool.setuptools_scm]
 version_file = "openfox/_version.py"
+
+[tool.setuptools]
+packages = ["openfox"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+openfox = ["skills/**/*.md", "static/web/**/*"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["openfox"]
