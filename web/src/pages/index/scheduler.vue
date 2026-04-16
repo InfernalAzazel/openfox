@@ -511,7 +511,7 @@ const scheduleTableMeta = computed(() => ({
       [
         "cursor-pointer transition-colors",
         selectedId.value === row.original.id
-          ? "bg-accent text-accent-foreground hover:bg-accent/90 [&_td]:!text-accent-foreground dark:hover:bg-accent/80"
+          ? "[&_td]:!bg-primary/12 dark:[&_td]:!bg-primary/20"
           : "",
       ].filter(Boolean).join(" "),
   },

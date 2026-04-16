@@ -1416,7 +1416,7 @@ watch(
           </template>
         </UTable>
         <div
-          v-if="activeTab === 'runs'"
+          v-if="!selectedTrace && activeTab === 'runs'"
           class="flex justify-end border-t border-default px-3 py-2 sm:px-4"
         >
           <UPagination
@@ -1427,7 +1427,7 @@ watch(
           />
         </div>
         <UTable
-          v-else
+          v-if="!selectedTrace && activeTab === 'sessions'"
           :data="pagedTraceSessions"
           :columns="sessionColumns"
           :loading="loadingSessions || loadingTraceDetail"
@@ -1442,7 +1442,7 @@ watch(
           </template>
         </UTable>
         <div
-          v-if="activeTab === 'sessions'"
+          v-if="!selectedTrace && activeTab === 'sessions'"
           class="flex justify-end border-t border-default px-3 py-2 sm:px-4"
         >
           <UPagination

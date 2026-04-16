@@ -547,7 +547,7 @@ const contentTableMeta = computed(() => ({
         "cursor-pointer transition-colors",
         selectedContent.value &&
         row.original?.id === selectedContent.value.id
-          ? "[&_td:not(:first-child)]:!text-primary [&_td:not(:first-child)_span]:!text-primary"
+          ? "[&_td]:!bg-primary/12 dark:[&_td]:!bg-primary/20"
           : "",
       ]
         .filter(Boolean)
@@ -948,13 +948,13 @@ onUnmounted(() => {
       </div>
 
       <div
-        class="flex gap-4"
-        :class="selectedContent ? 'flex-col lg:flex-row' : ''"
+        class="flex min-w-0 gap-4"
+        :class="selectedContent ? 'flex-col lg:flex-row lg:items-start' : ''"
       >
         <!-- Content List -->
         <div
-          class="overflow-hidden rounded-lg border border-default bg-default shadow-sm"
-          :class="selectedContent ? 'lg:w-1/2' : 'w-full'"
+          class="flex min-w-0 flex-col overflow-hidden rounded-lg border border-default bg-default shadow-sm"
+          :class="selectedContent ? 'lg:flex-1' : 'w-full'"
         >
           <div
             class="flex min-h-12 flex-nowrap items-center justify-between gap-3 border-b border-default px-3 py-3 sm:min-h-14 sm:px-4 sm:py-3.5"
@@ -1024,25 +1024,27 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <UTable
-            v-model:row-selection="rowSelection"
-            :data="pagedContents"
-            :columns="contentColumns"
-            :loading="loadingContents"
-            :get-row-id="(row: KnowledgeContent) => row.id"
-            :empty="t('knowledge.emptyContent')"
-            sticky="header"
-            class="w-full min-w-0"
-            :ui="tableUi"
-            :meta="contentTableMeta"
-            @select="selectContentRow"
-          >
-            <template #loading>
-              <span class="text-muted-foreground">{{
-                t("common.loading")
-              }}</span>
-            </template>
-          </UTable>
+          <div class="min-h-0 flex-1">
+            <UTable
+              v-model:row-selection="rowSelection"
+              :data="pagedContents"
+              :columns="contentColumns"
+              :loading="loadingContents"
+              :get-row-id="(row: KnowledgeContent) => row.id"
+              :empty="t('knowledge.emptyContent')"
+              sticky="header"
+              class="w-full min-w-0"
+              :ui="tableUi"
+              :meta="contentTableMeta"
+              @select="selectContentRow"
+            >
+              <template #loading>
+                <span class="text-muted-foreground">{{
+                  t("common.loading")
+                }}</span>
+              </template>
+            </UTable>
+          </div>
           <div class="flex justify-end border-t border-default px-3 py-2 sm:px-4">
             <UPagination
               v-model:page="knowledgePage"
@@ -1056,7 +1058,7 @@ onUnmounted(() => {
         <!-- Detail Panel -->
         <div
           v-if="selectedContent"
-          class="overflow-hidden rounded-lg border border-default bg-default shadow-sm lg:w-1/2"
+          class="flex min-w-0 flex-col overflow-hidden rounded-lg border border-default bg-default shadow-sm lg:flex-1"
         >
           <div class="flex items-center justify-between border-b border-default px-4 py-3">
             <h3
