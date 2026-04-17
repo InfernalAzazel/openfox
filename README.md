@@ -286,7 +286,6 @@ You can edit the live file in the Web **Config** page or via the **expand/config
 |------------|----------------|
 | **ShellTools** | Run shell commands on the host where OpenFox runs (Agno) |
 | **SchedulerTools** | Registered when `tools.scheduler.activate` is true. Create / list / get / delete / disable jobs; cron expressions invoke this Agent's run endpoint |
-| **FeishuTools** | Feishu-related actions (e.g. messaging with the channel) |
 | **MCPConfigTools** | Add / remove / update MCP-related config in chat to extend tools dynamically |
 | **WebSearchTools** | Search the web |
 | **ArxivTools** | Search [arXiv](https://arxiv.org/) papers and metadata |

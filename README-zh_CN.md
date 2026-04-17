@@ -286,7 +286,6 @@ OpenFox 从 **`~/.openfox/config.json`** 读取 JSON 配置，字段对应 `open
 |--------|------|
 | **ShellTools** | 在运行 OpenFox 的机器上执行 Shell 命令（Agno） |
 | **SchedulerTools** | 当 `tools.scheduler.activate` 为 true 时注册。创建 / 列出 / 获取 / 删除 / 禁用定时任务；Cron 表达式触发对本 Agent 运行端点的回调 |
-| **FeishuTools** | 飞书相关能力（如发消息等与通道联动） |
 | **MCPConfigTools** | 在对话中增删改 MCP 相关配置声明，便于动态扩展工具 |
 | **WebSearchTools** | 联网搜索网页信息 |
 | **ArxivTools** | 检索 [arXiv](https://arxiv.org/) 论文与元数据 |
