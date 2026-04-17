@@ -79,9 +79,7 @@ OpenFox 从 **`~/.openfox/config.json`** 读取 JSON 配置，字段对应 `open
   "channels": {
     "feishu": {
       "app_id": "<feishu_app_id>",
-      "app_secret": "<feishu_app_secret>",
-      "encrypt_key": "<feishu_encrypt_key>",
-      "verification_token": "<feishu_verification_token>"
+      "app_secret": "<feishu_app_secret>"
     }
   },
   // MCP 服务列表：每项要么 stdio（command+args），要么 HTTP（url+headers）
@@ -411,12 +409,6 @@ ollama/llama3.1
 
 <p align="center"><strong>配置</strong></p>
 <p align="center"><img src="https://raw.githubusercontent.com/InfernalAzazel/openfox/main/assets/image15.png" alt="OpenFox Web — 配置" width="900" /></p>
-
----
-
-## 内网穿透（可选）
-
-- [zeronews](https://user.zeronews.cc/setup/start)
 
 ---
 

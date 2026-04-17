@@ -79,9 +79,7 @@ The **key order, nesting, and non-secret values** match a full on-disk layout; s
   "channels": {
     "feishu": {
       "app_id": "<feishu_app_id>",
-      "app_secret": "<feishu_app_secret>",
-      "encrypt_key": "<feishu_encrypt_key>",
-      "verification_token": "<feishu_verification_token>"
+      "app_secret": "<feishu_app_secret>"
     }
   },
   // MCP servers: each entry is stdio (command+args) or HTTP (url+headers)
@@ -411,12 +409,6 @@ ollama/llama3.1
 
 <p align="center"><strong>Configuration</strong></p>
 <p align="center"><img src="https://raw.githubusercontent.com/InfernalAzazel/openfox/main/assets/image15.png" alt="OpenFox Web — Configuration" width="900" /></p>
-
----
-
-## Intranet tunnel (optional)
-
-- [zeronews](https://user.zeronews.cc/setup/start)
 
 ---
 
