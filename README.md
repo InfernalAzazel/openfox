@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="./README.md">English</a> | <a href="./README-zh_CN.md">简体中文</a>
+  <a href="https://raw.githubusercontent.com/InfernalAzazel/openfox/main/README.md">English</a> | <a href="https://raw.githubusercontent.com/InfernalAzazel/openfox/main/README-zh_CN.md">简体中文</a>
 </p>
 
 <p align="center">
