@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <strong>自托管个人 AI 助手</strong><br />
+  <strong>企业级自托管 AI 助手</strong><br />
   飞书通道 · 内置 Web 控制台 · LiteLLM 多模型
 </p>
 
@@ -427,7 +427,7 @@ ollama/llama3.1
 | 技术栈 | Node / TypeScript | Python、Agno、FastAPI |
 | 通道 | 多平台即时通讯 | 飞书为主（可扩展） |
 | 扩展 | 浏览器、Canvas、Cron 等 | Cron、Shell、浏览器（Playwright）、MCP、本地 Skills |
-| 定位 | 全平台个人助手 | 自托管、中英文场景、轻量中控与 Web 一体 |
+| 定位 | 全平台个人助手 | 企业级自托管 AI 助手，中英文友好，内置一体化 Web 控制台 |
 
 ---
 

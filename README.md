@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <strong>Self-hosted personal AI assistant</strong><br />
+  <strong>Enterprise-grade self-hosted AI assistant</strong><br />
   Feishu channel · Built-in Web console · LiteLLM multi-model
 </p>
 
@@ -429,7 +429,7 @@ ollama/llama3.1
 | Stack | Node / TypeScript | Python, Agno, FastAPI |
 | Channels | Many IM platforms | Feishu-first (extensible) |
 | Extensions | Browser, Canvas, Cron, etc. | Cron, Shell, browser (Playwright), MCP, local Skills |
-| Focus | Cross-platform personal assistant | Self-hosted, bilingual-friendly, lightweight control plane with integrated Web UI |
+| Focus | Cross-platform personal assistant | Enterprise-grade self-hosted AI assistant, bilingual-friendly, with an integrated Web control plane |
 
 ---
 
