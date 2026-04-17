@@ -79,3 +79,4 @@ def serve(host: str = "0.0.0.0", port: int = 7777) -> None:
         )
     uvicorn_config = uvicorn.Config(openfox_agent.app, host=host, port=port)
     run_uvicorn_with_web_banner(uvicorn_config)
+

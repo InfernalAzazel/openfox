@@ -1,52 +1,76 @@
-"""Scheduled-run notifications: in-memory registry and auto-discovery of notifys/*.py plugins."""
+"""Scheduled-run notifications: in-memory registry and auto-discovery of channels/*.py handlers."""
 
 from __future__ import annotations
 
 import json
+import inspect
 from importlib import import_module
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Dict, Optional
 
-from agno.agent import Agent, RunOutput
+from agno.agent import RunOutput
 from agno.hooks.decorator import hook
 from agno.utils.log import logger
 
 ScheduledNotifierFn = Callable[[RunOutput, Dict[str, Any]], Awaitable[None]]
 
-# Maps channel["type"] (e.g. "feishu") to the async handler from each plugin's register tuple.
+# Maps channel["type"] (e.g. "feishu") to async notifier handlers discovered in channels modules.
 _notifiers: Dict[str, ScheduledNotifierFn] = {}
-_NOTIFYS_DIR = Path(__file__).resolve().parent.parent / "notifys"
+_CHANNELS_DIR = Path(__file__).resolve().parent.parent / "channels"
 
 
-def _load_notifys_plugins() -> None:
-    """Import every openfox/notifys/*.py module and read register = (type_name, handler)."""
-    if not _NOTIFYS_DIR.is_dir():
+def _build_class_notifier(cls: type) -> ScheduledNotifierFn:
+    """
+    Build a notifier wrapper around `Class.on_notify_scheduled`.
+
+    The channel instance is created lazily at first notification dispatch.
+    """
+    instance: Any = None
+
+    async def _wrapped(run_output: RunOutput, channel: Dict[str, Any]) -> None:
+        nonlocal instance
+        if instance is None:
+            try:
+                instance = cls()
+            except Exception as e:
+                raise RuntimeError(
+                    f"scheduled_notify: cannot init {cls.__module__}.{cls.__name__}: {e}"
+                ) from e
+        await instance.on_notify_scheduled(run_output, channel)
+
+    return _wrapped
+
+
+def _load_channel_notifiers() -> None:
+    """
+    Import every openfox/channels/*.py module and discover class notifier handlers.
+    """
+    if not _CHANNELS_DIR.is_dir():
         return
-    for path in sorted(_NOTIFYS_DIR.glob("*.py")):
+    for path in sorted(_CHANNELS_DIR.glob("*.py")):
         stem = path.stem
-        # Skip package init and private/helper modules (e.g. _utils.py).
-        if stem == "__init__" or stem.startswith("_"):
+        # Skip package init, base abstractions, and private/helper modules.
+        if stem in {"__init__", "base"} or stem.startswith("_"):
             continue
-        modname = f"openfox.notifys.{stem}"
+        modname = f"openfox.channels.{stem}"
         try:
             mod = import_module(modname)
         except Exception as e:
-            logger.warning(f"scheduled_notify: skip plugin {modname}: {e}")
+            logger.warning(f"scheduled_notify: skip channel module {modname}: {e}")
             continue
-        # Plugins expose register = ("channel_type", async_callable).
-        reg = getattr(mod, "register", None)
-        if reg is None:
-            continue
-        if (
-            isinstance(reg, tuple)
-            and len(reg) == 2
-            and isinstance(reg[0], str)
-            and reg[0]
-            and callable(reg[1])
-        ):
-            _notifiers[reg[0]] = reg[1]
-        else:
-            logger.warning(f"scheduled_notify: invalid register= in {modname}")
+
+        # Only detect class method on_notify_scheduled(...)
+        found = False
+        for _, obj in inspect.getmembers(mod, inspect.isclass):
+            if obj.__module__ != mod.__name__:
+                continue
+            method = getattr(obj, "on_notify_scheduled", None)
+            if callable(method):
+                _notifiers[stem] = _build_class_notifier(obj)
+                found = True
+                break
+        if not found:
+            logger.warning(f"scheduled_notify: no on_notify_scheduled found in {modname}")
 
 
 def _coerce_channel_dict(raw: Any) -> Optional[Dict[str, Any]]:
@@ -92,4 +116,4 @@ async def send_notification(run_output: RunOutput, channel: Any = None) -> None:
 
 
 # Populate _notifiers at import time so handlers exist before any run completes.
-_load_notifys_plugins()
+_load_channel_notifiers()

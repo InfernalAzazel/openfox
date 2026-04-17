@@ -22,7 +22,6 @@ from agno.tools.scheduler import SchedulerTools
 
 from openfox.schemas.config import toolkit_filter_kwargs
 from openfox.tools.config import ConfigTools
-from openfox.tools.feishu import FeishuTools
 from openfox.tools.mcp_config import MCPConfigTools
 from openfox.utils.mcps import build_mcps
 
@@ -32,14 +31,11 @@ ScheduleManager.close = lambda self: (getattr(self, "_pool", None) and (self._po
 def build_openfox_toolkits(
     db,
     config_tools: ConfigTools,
-    feishu_tools: FeishuTools,
 ) -> List[Toolkit]:
     """Assemble toolkits from ``config.tools`` (options follow Agno toolkit constructors)."""
     config = config_tools.load()
     tc = config.tools
     tools_list: List[Toolkit] = []
-
-    tools_list.append(feishu_tools)
 
     if tc.scheduler.activate:
         tools_list.append(

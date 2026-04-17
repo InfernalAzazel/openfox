@@ -1,8 +1,6 @@
 from typing import Any, Dict, List, Literal, Optional
-
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
-
 from agno.vectordb.distance import Distance
 from agno.vectordb.search import SearchType
 
@@ -43,8 +41,6 @@ class FeishuConfig(BaseSettings):
 
     app_id: str = Field(default="", description="Feishu Open Platform app ID")
     app_secret: str = Field(default="", description="Feishu Open Platform app secret")
-    encrypt_key: str = Field(default="", description="Event subscription encrypt key")
-    verification_token: str = Field(default="", description="Event subscription verification token")
 
 
 class LLMConfig(BaseSettings):

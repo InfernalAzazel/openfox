@@ -4,16 +4,14 @@ from agno.models.litellm import LiteLLM
 from agno.os import AgentOS
 from agno.os.settings import AgnoAPISettings
 from agno.skills import Skills
-
 from openfox.core.knowledge import build_knowledge
+from openfox.core.lifespan import app_lifespan
 from openfox.core.skills import ensure_skills_from_bundle
 from openfox.core.tools import build_openfox_toolkits
-from openfox.interfaces.feishu import Feishu
 from openfox.routers import config
 from openfox.routers import skills
 from openfox.routers import version
 from openfox.tools.config import ConfigTools
-from openfox.tools.feishu import FeishuTools
 from openfox.utils.const import DB_PATH, SKILLS_PATH
 from openfox.utils.notify import send_notification
 from openfox.utils.skills import LocalSkills
@@ -27,7 +25,6 @@ class OpenFoxAgent:
 
         self.config_tools = ConfigTools()
         self.config = self.config_tools.load()
-        self.feishu_tools = FeishuTools()
         DB_PATH.parent.mkdir(parents=True, exist_ok=True)
         ensure_skills_from_bundle()
         self.db = AsyncSqliteDb(db_file=str(DB_PATH))
@@ -50,7 +47,6 @@ class OpenFoxAgent:
         tools_list = build_openfox_toolkits(
             self.db,
             self.config_tools,
-            self.feishu_tools,
         )
 
         self.agent = Agent(
@@ -82,13 +78,14 @@ class OpenFoxAgent:
         self.os = AgentOS(
             name=self.config.agent_id,
             agents=[self.agent],
-            interfaces=[Feishu(agent=self.agent)],
             db=self.db,
             scheduler=True,
             scheduler_poll_interval=15,
             settings=settings,
+            lifespan=app_lifespan,
         )
         self.app = self.os.get_app()
+        self.app.state.openfox_agent = self
         self.app.include_router(config.get_router(self.config_tools, settings))
         self.app.include_router(skills.get_router(self.agent, settings))
         self.app.include_router(version.get_router(settings))

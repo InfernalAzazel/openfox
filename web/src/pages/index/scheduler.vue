@@ -23,7 +23,7 @@ export interface ScheduleRunEntry {
   /** 列表项主键（`ScheduleRunResponse.id`） */
   entryId: string
   runId: string
-  status: "SUCCESS" | "FAILED"
+  status: "COMPLETED" | "RUNNING" | "PENDING" | "ERROR" | "CANCELLED" | "PAUSED"
   triggeredAt: Date
   completedAt: Date
   statusCode: number
@@ -260,11 +260,36 @@ function scheduleResponseToRow(s: ScheduleResponse, runsCount = 0): ScheduleRow 
 }
 
 function mapRunResponse(r: ScheduleRunResponse): ScheduleRunEntry {
-  const st = (r.status || "").toLowerCase()
-  const ok
-    = st === "success"
-      || st === "completed"
-      || (r.status_code != null && r.status_code > 0 && r.status_code < 400)
+  const st = String(r.status || "").trim().toUpperCase()
+  let status: ScheduleRunEntry["status"]
+  switch (st) {
+    case "COMPLETED":
+    case "SUCCESS":
+      status = "COMPLETED"
+      break
+    case "RUNNING":
+      status = "RUNNING"
+      break
+    case "PENDING":
+      status = "PENDING"
+      break
+    case "CANCELLED":
+    case "CANCELED":
+      status = "CANCELLED"
+      break
+    case "PAUSED":
+      status = "PAUSED"
+      break
+    case "ERROR":
+    case "FAILED":
+      status = "ERROR"
+      break
+    default:
+      status
+        = (r.status_code != null && r.status_code > 0 && r.status_code < 400)
+          ? "COMPLETED"
+          : "ERROR"
+  }
   const trigMs = normalizeUnixMs(r.triggered_at ?? r.created_at ?? undefined)
   const compMs = normalizeUnixMs(r.completed_at ?? r.triggered_at ?? undefined)
 
@@ -312,16 +337,54 @@ function mapRunResponse(r: ScheduleRunResponse): ScheduleRunEntry {
   return {
     entryId: r.id,
     runId: runIdDisplay,
-    status: ok ? "SUCCESS" : "FAILED",
+    status,
     triggeredAt: new Date(trigMs),
     completedAt: new Date(compMs),
-    statusCode: r.status_code ?? (ok ? 200 : 500),
+    statusCode: r.status_code ?? (status === "COMPLETED" ? 200 : 500),
     attempt: r.attempt,
     sessionId: r.session_id?.trim() || "—",
     inputSummary,
     inputHref,
     outputText,
     durationMs: Math.max(0, compMs - trigMs),
+  }
+}
+
+function runStatusBadgeClass(status: ScheduleRunEntry["status"]): string {
+  switch (status) {
+    case "COMPLETED":
+      return "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300 font-bold"
+    case "RUNNING":
+      return "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300 font-bold"
+    case "PENDING":
+      return "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-300 font-bold"
+    case "ERROR":
+      return "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300 font-bold"
+    case "CANCELLED":
+      return "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-500/20 dark:text-fuchsia-300 font-bold"
+    case "PAUSED":
+      return "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/20 dark:text-cyan-300 font-bold"
+    default:
+      return "font-bold"
+  }
+}
+
+function runStatusLabel(status: ScheduleRunEntry["status"]): string {
+  switch (status) {
+    case "COMPLETED":
+      return t("scheduler.runs.statusCompleted")
+    case "RUNNING":
+      return t("scheduler.runs.statusRunning")
+    case "PENDING":
+      return t("scheduler.runs.statusPending")
+    case "ERROR":
+      return t("scheduler.runs.statusError")
+    case "CANCELLED":
+      return t("scheduler.runs.statusCancelled")
+    case "PAUSED":
+      return t("scheduler.runs.statusPaused")
+    default:
+      return status
   }
 }
 
@@ -1362,20 +1425,14 @@ async function onScheduleEnabled(row: ScheduleRow, enabled: boolean) {
                         {{ run.runId }}
                       </span>
                       <UBadge
-                        v-if="run.status === 'SUCCESS'"
-                        color="success"
+                        color="neutral"
                         variant="subtle"
-                        class="shrink-0 px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
+                        :class="[
+                          'shrink-0 px-2 py-0.5 text-[10px] tracking-wide uppercase',
+                          runStatusBadgeClass(run.status),
+                        ]"
                       >
-                        {{ t("scheduler.runs.statusSuccess") }}
-                      </UBadge>
-                      <UBadge
-                        v-else
-                        color="error"
-                        variant="subtle"
-                        class="shrink-0 px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
-                      >
-                        {{ t("scheduler.runs.statusFailed") }}
+                        {{ runStatusLabel(run.status) }}
                       </UBadge>
                     </button>
                     <template #content>
