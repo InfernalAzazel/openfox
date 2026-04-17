@@ -36,9 +36,15 @@ class OpenFoxAgent:
             f"The default timezone is {self.config.time_zone}.",
             # When the user wants to create a scheduled/periodic task (create_schedule, etc.) and a channel appears in the context：
             (
-                "When the user asks to create a recurring or scheduled task (e.g. create_schedule) and a "
-                "`channel` object appears in the context: the schedule payload JSON must include a `channel` "
-                "field in addition to `message`, and its value must match that context object exactly (copy it verbatim)."
+                'When the user EXPLICITLY requests to create a recurring or scheduled task'
+               '(e.g. using clear intent like "schedule", "remind", "repeat", "every day", etc.),'
+                'and a `channel` object appears in the context:',
+                '- You MUST include a `channel` field in the schedule payload JSON.',
+                '- The value of `channel` MUST match the provided context object exactly (copy it verbatim).',
+                'If the user does NOT explicitly request scheduling or recurring behavior:',
+                '- DO NOT create any schedule.',
+                '- DO NOT infer or assume scheduling intent.',
+                '- DO NOT generate any schedule-related payload.',
             ),
             # mcp config tool
             "When the user wants to configure MCP through chat, use the mcp_config tool.",

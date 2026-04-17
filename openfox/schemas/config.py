@@ -36,14 +36,14 @@ def toolkit_filter_kwargs(cfg: ToolkitFilterFields) -> dict[str, list[str]]:
     return out
 
 
-class FeishuConfig(BaseSettings):
+class FeishuConfig(ToolkitFilterFields):
     """Feishu (Lark) channel settings."""
 
     app_id: str = Field(default="", description="Feishu Open Platform app ID")
     app_secret: str = Field(default="", description="Feishu Open Platform app secret")
 
 
-class LLMConfig(BaseSettings):
+class LLMConfig(BaseModel):
     """LLM settings."""
 
     model_name: str = Field(default="deepseek/deepseek-chat", description="Model name")
@@ -100,13 +100,13 @@ class KnowledgeConfig(BaseModel):
     isolate_vector_search: bool = Field(default=False, description="Isolate search when sharing one vector DB")
 
 
-class ChannelsConfig(BaseSettings):
+class ChannelsConfig(BaseModel):
     """Channel integrations."""
 
     feishu: FeishuConfig = Field(default_factory=FeishuConfig)
 
 
-class MCPServerConfig(BaseSettings):
+class MCPServerConfig(BaseModel):
     """MCP server connection (stdio or HTTP)."""
 
     name: str = Field(default="", description="Config display name")

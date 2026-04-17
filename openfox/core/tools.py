@@ -22,6 +22,7 @@ from agno.tools.scheduler import SchedulerTools
 
 from openfox.schemas.config import toolkit_filter_kwargs
 from openfox.tools.config import ConfigTools
+from openfox.tools.feishu import FeiShuTools
 from openfox.tools.mcp_config import MCPConfigTools
 from openfox.utils.mcps import build_mcps
 
@@ -36,6 +37,9 @@ def build_openfox_toolkits(
     config = config_tools.load()
     tc = config.tools
     tools_list: List[Toolkit] = []
+
+    
+    tools_list.append(FeiShuTools(**toolkit_filter_kwargs(config.channels.feishu)))
 
     if tc.scheduler.activate:
         tools_list.append(

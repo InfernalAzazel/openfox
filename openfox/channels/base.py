@@ -25,9 +25,5 @@ class BaseChannel(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def send_message(self, receive_id: str, content: Any, msg_type: str = "text", **kwargs):
-        raise NotImplementedError
-
-    @abstractmethod
     async def on_notify_scheduled(run_output: RunOutput, channel: Dict[str, Any]) -> None:
         raise NotImplementedError

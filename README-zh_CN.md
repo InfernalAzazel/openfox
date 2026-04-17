@@ -286,6 +286,7 @@ OpenFox 从 **`~/.openfox/config.json`** 读取 JSON 配置，字段对应 `open
 |--------|------|
 | **ShellTools** | 在运行 OpenFox 的机器上执行 Shell 命令（Agno） |
 | **SchedulerTools** | 当 `tools.scheduler.activate` 为 true 时注册。创建 / 列出 / 获取 / 删除 / 禁用定时任务；Cron 表达式触发对本 Agent 运行端点的回调 |
+| **FeiShuTools** | 飞书消息发送工具：`send_text_message`、`send_image_message`、`send_file_message`、`send_audio_message`、`send_media_message` |
 | **MCPConfigTools** | 在对话中增删改 MCP 相关配置声明，便于动态扩展工具 |
 | **WebSearchTools** | 联网搜索网页信息 |
 | **ArxivTools** | 检索 [arXiv](https://arxiv.org/) 论文与元数据 |
@@ -337,6 +338,14 @@ python -m openfox
 2. 配置事件订阅与消息权限，请求 URL 指向你的服务（公网或内网穿透），填写 **Encrypt Key**、**Verification Token**。
 3. 将上述信息写入 `~/.openfox/config.json` 的 `channels.feishu`，重启 `python -m openfox`。
 4. 在飞书单聊或群聊中使用应用能力（如 @ 机器人）与 OpenFox 对话。
+
+FeiShuTools 可用方法（对话工具）：
+
+- `send_text_message`：发送纯文本或 markdown 卡片文本。
+- `send_image_message`：通过 `image_key` 或 URL/路径上传后发送图片。
+- `send_file_message`：通过 `file_key` 或 URL/路径上传后发送文件。
+- `send_audio_message`：上传并发送 OPUS 语音。
+- `send_media_message`：上传并发送 MP4 视频，可选缩略图。
 
 ---
 

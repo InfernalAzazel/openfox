@@ -286,6 +286,7 @@ You can edit the live file in the Web **Config** page or via the **expand/config
 |------------|----------------|
 | **ShellTools** | Run shell commands on the host where OpenFox runs (Agno) |
 | **SchedulerTools** | Registered when `tools.scheduler.activate` is true. Create / list / get / delete / disable jobs; cron expressions invoke this Agent's run endpoint |
+| **FeiShuTools** | Feishu outbound messaging toolkit: `send_text_message`, `send_image_message`, `send_file_message`, `send_audio_message`, `send_media_message` |
 | **MCPConfigTools** | Add / remove / update MCP-related config in chat to extend tools dynamically |
 | **WebSearchTools** | Search the web |
 | **ArxivTools** | Search [arXiv](https://arxiv.org/) papers and metadata |
@@ -337,6 +338,14 @@ Steps in brief:
 2. Configure event subscription and message permissions; set the request URL to your service (public URL or tunnel); fill **Encrypt Key** and **Verification Token**.
 3. Write these into `channels.feishu` in `~/.openfox/config.json`, then restart `python -m openfox`.
 4. In Feishu DM or group chat, use the app (e.g. @ bot) to talk to OpenFox.
+
+FeiShuTools methods (chat tools):
+
+- `send_text_message`: send plain text or markdown card text.
+- `send_image_message`: send by `image_key` or upload from URL/path.
+- `send_file_message`: send by `file_key` or upload from URL/path.
+- `send_audio_message`: upload/send OPUS audio.
+- `send_media_message`: upload/send MP4 video, optional thumbnail.
 
 ---
 
