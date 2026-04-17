@@ -51,26 +51,31 @@ OpenFox reads a single JSON file at **`~/.openfox/config.json`**. Fields map to 
 
 **Valid on-disk JSON**: `~/.openfox/config.json` must be **standard JSON** (double quotes, no `//` comments). The **`jsonc`** snippet below is **documentation only**—remove comments before saving, or paste the object into the Web **Config** editor.
 
-### Reference `config.json` (valid JSON; structure matches a full on-disk file)
+### Full reference example (JSONC; documentation only)
 
-Secret values below are **placeholders**—use your own keys and never commit them to git.
+The **key order, nesting, and non-secret values** match a full on-disk layout; secrets are **placeholders**. On disk the file must be **plain JSON** (no `//` comments).
 
-```json
+```jsonc
 {
+  // Agent identity
   "agent_id": "OpenFox",
   "docs_enabled": true,
   "os_security_key": "<os_security_key>",
+  // Browser / API origins (update if you change the listen port)
   "cors_origin_list": [
     "http://127.0.0.1:7777",
     "http://localhost:7777"
   ],
   "time_zone": "Asia/Shanghai",
+  // Enable RAG / knowledge search
   "search_knowledge": true,
+  // Main chat model (LiteLLM)
   "llm": {
     "model_name": "deepseek/deepseek-chat",
     "api_base": "https://api.deepseek.com",
     "api_key": "<llm_api_key>"
   },
+  // Channel integrations (example: Feishu)
   "channels": {
     "feishu": {
       "app_id": "<feishu_app_id>",
@@ -79,7 +84,36 @@ Secret values below are **placeholders**—use your own keys and never commit th
       "verification_token": "<feishu_verification_token>"
     }
   },
-  "mcps": [],
+  // MCP servers: each entry is stdio (command+args) or HTTP (url+headers)
+  "mcps": [
+    {
+      // Display name
+      "name": "weibo",
+      // stdio: uvx --from Git runs the MCP without a prior install
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/InfernalAzazel/mcp-server-weibo.git",
+        "mcp-server-weibo"
+      ],
+      "env": {},
+      // stdio: leave url empty
+      "url": "",
+      "headers": {},
+      "tool_timeout": 60
+    },
+    {
+      "name": "chrome-devtools",
+      // stdio: npx runs a published Node MCP package
+      "command": "npx",
+      "args": ["chrome-devtools-mcp@latest"],
+      "env": {},
+      "url": "",
+      "headers": {},
+      "tool_timeout": 60
+    }
+  ],
+  // RAG: Chroma + embedder + reranker
   "knowledge": {
     "vector_db": {
       "collection": "docs",
@@ -113,6 +147,7 @@ Secret values below are **placeholders**—use your own keys and never commit th
     "max_results": 10,
     "isolate_vector_search": false
   },
+  // Toolkit toggles and options
   "tools": {
     "mcp": {
       "include_tools": null,
@@ -224,44 +259,7 @@ Secret values below are **placeholders**—use your own keys and never commit th
 }
 ```
 
-To attach MCP servers, replace `"mcps": []` with a real array (see the **JSONC** example in the next subsection; strip comments for a valid file).
-
-### MCP servers (`mcps`) — example with comments (JSONC, not valid for copy-paste as-is)
-
-Each item is either **stdio** (`command` + `args`, optional `env`) or **HTTP** (`url`, optional `headers`). Below are two **stdio** examples: **uvx** (Python MCP from Git) and **npx** (Node MCP). For HTTP, set `url` (and optional `headers`) and leave `command` / `args` empty.
-
-```jsonc
-"mcps": [
-  {
-    // Display name
-    "name": "weibo",
-    // uvx: run tool from a Git dependency (--from) without a prior pip install
-    "command": "uvx",
-    "args": [
-      "--from",
-      "git+https://github.com/InfernalAzazel/mcp-server-weibo.git",
-      "mcp-server-weibo"
-    ],
-    "env": {},
-    // stdio transport: keep url empty
-    "url": "",
-    "headers": {},
-    "tool_timeout": 60
-  },
-  {
-    "name": "chrome-devtools",
-    // npx: run a published Node MCP package
-    "command": "npx",
-    "args": ["chrome-devtools-mcp@latest"],
-    "env": {},
-    "url": "",
-    "headers": {},
-    "tool_timeout": 60
-  }
-]
-```
-
-Requires **`uv` / `uvx`** and **Node.js `npx`** on the host where OpenFox runs, if you use those entries.
+If you use the **stdio** MCP entries above, the host running OpenFox needs **`uv` / `uvx`** and **Node.js (with `npx`)** installed, as applicable.
 
 You can edit the live file in the Web **Config** page or via the **expand/config** HTTP API when authenticated. After manual edits on disk, restart `python -m openfox` if the process is already running.
 
