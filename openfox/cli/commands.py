@@ -53,8 +53,6 @@ def init():
     feishu = config.channels.feishu
     feishu.app_id = typer.prompt(typer.style("Feishu App ID (channels.feishu.app_id)", fg=typer.colors.CYAN))
     feishu.app_secret = typer.prompt(typer.style("Feishu App Secret (channels.feishu.app_secret)", fg=typer.colors.CYAN))
-    feishu.encrypt_key = typer.prompt(typer.style("Feishu Encrypt Key (channels.feishu.encrypt_key)", fg=typer.colors.CYAN))
-    feishu.verification_token = typer.prompt(typer.style("Feishu Verification Token (channels.feishu.verification_token)", fg=typer.colors.CYAN))
 
     config_tools.save(config)
     typer.secho(f"Configuration saved to: {config_tools.get_path()}", fg=typer.colors.GREEN)
