@@ -8,7 +8,7 @@
 
 <p align="center">
   <strong>企业级自托管 AI 助手</strong><br />
-  飞书通道 · 内置 Web 控制台 · LiteLLM 多模型
+  飞书 · 微信 iLink（WxClaw）· 内置 Web 控制台 · LiteLLM 多模型
 </p>
 
 <p align="center">
@@ -21,7 +21,7 @@
 
 ## 它是什么
 
-**OpenFox** 跑在你自己的机器上：把 **大模型对话、定时任务、飞书机器人、浏览器工具、MCP、本地技能** 收拢到同一套 HTTP 服务里。默认带 **嵌入式 Web UI**（`/web`），也可在飞书中与助手对话。
+**OpenFox** 跑在你自己的机器上：把 **大模型对话、定时任务、飞书机器人、微信 iLink 机器人（WxClaw）、浏览器工具、MCP、本地技能** 收拢到同一套 HTTP 服务里。默认带 **嵌入式 Web UI**（`/web`），可在 **飞书** 或 **微信**（启用 WxClaw 后）与助手对话。
 
 | 路径 | 说明 |
 |------|------|
@@ -45,7 +45,7 @@ OpenFox 从 **`~/.openfox/config.json`** 读取 JSON 配置，字段对应 `open
 | `search_knowledge` | 为 `true` 时启用 **RAG**（Chroma 数据目录为 `~/.openfox/chromadb`，不在本文件中配置路径）。 |
 | `llm` | 对话模型：`model_name`、`api_base`、`api_key`（LiteLLM 风格模型 id）。 |
 | `knowledge` | `search_knowledge` 为 true 时生效：`vector_db`（集合名、`search_type`、**embedder** / **reranker** 等）、`max_results`、`isolate_vector_search`。 |
-| `channels` | 通道集成，如 `channels.feishu`（`app_id`、`app_secret`、`encrypt_key`、`verification_token`）。 |
+| `channels` | 通道集成：`channels.feishu`（`activate`、`app_id`、`app_secret`、`encrypt_key`、`verification_token` 等）；`channels.wxclaw`（`activate`，及对 **WxClawTools** 可选的 `include_tools` / `exclude_tools`）。WxClaw 为扫码登录，令牌与同步游标持久化在 `~/.openfox/channels/wxclaw/`（见 `WxClawTools` 与 `OPENFOX_HOME_PATH`）。 |
 | `mcps` | MCP 服务列表（`command`/`args`/`env` 或 `url`/`headers` 等）。 |
 | `tools` | 各工具包开关与参数（`mcp`、`scheduler`、`shell`、`websearch`、`arxiv` 等）；常见字段含 `activate`、`include_tools`、`exclude_tools` 及各自专用字段。 |
 
@@ -75,11 +75,15 @@ OpenFox 从 **`~/.openfox/config.json`** 读取 JSON 配置，字段对应 `open
     "api_base": "https://api.deepseek.com",
     "api_key": "<llm_api_key>"
   },
-  // 通道配置（示例为飞书）
+  // 通道配置（飞书 + 可选微信 iLink）
   "channels": {
     "feishu": {
+      "activate": true,
       "app_id": "<feishu_app_id>",
       "app_secret": "<feishu_app_secret>"
+    },
+    "wxclaw": {
+      "activate": false
     }
   },
   // MCP 服务列表：每项要么 stdio（command+args），要么 HTTP（url+headers）
@@ -273,6 +277,7 @@ OpenFox 从 **`~/.openfox/config.json`** 读取 JSON 配置，字段对应 `open
 | **评估体系** | 内置 **评估** 流程：从 **性能**、**可靠性**、**准确性** 等维度衡量 Agent 或团队表现（Web 控制台 `/evals`）。 |
 | **运行追踪** | **追踪 Agent 运行全过程**：查看链路、span、会话等可观测数据，便于排查与优化（Web 控制台 `/traces`）。 |
 | **飞书** | 事件与消息接入，单聊/群聊（可 @ 机器人） |
+| **WxClaw（微信 iLink）** | 长轮询接收微信消息；首次需在**终端**扫码登录；Bot Token 与同步游标写入 `~/.openfox/channels/wxclaw/`。配置 **`channels.wxclaw.activate`** 为 **`true`** 并重启服务后启用。 |
 | **定时任务** | 内置调度器；在配置中通过 `tools.scheduler`（**SchedulerConfig**）开启。对 Agent 暴露 **SchedulerTools**，可用自然语言创建周期任务（Cron 表达式 → POST 本 Agent 运行端点） |
 | **工具** | 见下文「内置 Agent 工具」；另可通过 `config.mcps` 挂载 **MCP**，Web 控制台中的配置编辑对应 **ConfigTools**（非 Agent 对话工具） |
 | **技能** | **`SKILLS_PATH`**（`~/.openfox/skills`）下各子目录中的 `SKILL.md`（LocalSkills）；Web 端支持上传技能包 |
@@ -287,6 +292,7 @@ OpenFox 从 **`~/.openfox/config.json`** 读取 JSON 配置，字段对应 `open
 | **ShellTools** | 在运行 OpenFox 的机器上执行 Shell 命令（Agno） |
 | **SchedulerTools** | 当 `tools.scheduler.activate` 为 true 时注册。创建 / 列出 / 获取 / 删除 / 禁用定时任务；Cron 表达式触发对本 Agent 运行端点的回调 |
 | **FeiShuTools** | 飞书消息发送工具：`send_text_message`、`send_image_message`、`send_file_message`、`send_audio_message`、`send_media_message` |
+| **WxClawTools** | 微信 iLink 工具：`send_text`、`upload_file`（本地文件经 CDN 上传后发送图片/视频/文件）。仅用于 `@im.wechat` / `channel.type=wxclaw`；勿将微信用户 id 当作飞书 `open_id` 调用飞书工具。 |
 | **MCPConfigTools** | 在对话中增删改 MCP 相关配置声明，便于动态扩展工具 |
 | **WebSearchTools** | 联网搜索网页信息 |
 | **ArxivTools** | 检索 [arXiv](https://arxiv.org/) 论文与元数据 |
@@ -309,7 +315,7 @@ OpenFox 从 **`~/.openfox/config.json`** 读取 JSON 配置，字段对应 `open
 pip install openfox
 ```
 
-**首次启动**：若没有 `~/.openfox/config.json`，会先走一轮交互式初始化（API 文档开关、鉴权、`os_security_key`、时区、LLM、飞书等），然后启动服务。
+**首次启动**：若没有 `~/.openfox/config.json`，会先走一轮交互式初始化（API 文档开关、鉴权、`os_security_key`、时区、LLM、飞书等），然后启动服务。若仅使用微信通道，可将 **`channels.wxclaw.activate`** 设为 **`true`**，并将 **`channels.feishu.activate`** 设为 **`false`**（按需）；修改配置后需**重启** `python -m openfox`。
 
 ```bash
 python -m openfox
@@ -346,6 +352,19 @@ FeiShuTools 可用方法（对话工具）：
 - `send_file_message`：通过 `file_key` 或 URL/路径上传后发送文件。
 - `send_audio_message`：上传并发送 OPUS 语音。
 - `send_media_message`：上传并发送 MP4 视频，可选缩略图。
+
+---
+
+## WxClaw（微信 iLink）
+
+**WxClaw** 是 OpenFox 的 **微信** 通道：长轮询接收入站消息，并可用文本或上传图片/视频/文件回复。
+
+### 先决条件（手机微信）
+
+1. 打开手机 **微信** → 点击 **我** → **设置** → **插件**。
+2. 安装 **微信 ClawBot**（微信 clawbot）。
+3. 在运行 OpenFox 的机器上，将 `~/.openfox/config.json` 中 **`channels.wxclaw.activate`** 设为 **`true`**，**启动** `python -m openfox`（修改配置后需**重启**进程）。
+4. 尚未保存 Bot Token 时，**终端**会打印 **二维码**，用 **手机微信** 扫码完成登录；令牌与同步游标写入 **`~/.openfox/channels/wxclaw/`**（见 `openfox/tools/wxclaw.py` 中的 `TOKEN_FILE`、`BUF_FILE`）。
 
 ---
 
@@ -425,7 +444,7 @@ ollama/llama3.1
 | 维度 | OpenClaw | OpenFox |
 |------|----------|---------|
 | 技术栈 | Node / TypeScript | Python、Agno、FastAPI |
-| 通道 | 多平台即时通讯 | 飞书为主（可扩展） |
+| 通道 | 多平台即时通讯 | 飞书 + 可选 **微信 iLink（WxClaw）** |
 | 扩展 | 浏览器、Canvas、Cron 等 | Cron、Shell、浏览器（Playwright）、MCP、本地 Skills |
 | 定位 | 全平台个人助手 | 企业级自托管 AI 助手，中英文友好，内置一体化 Web 控制台 |
 

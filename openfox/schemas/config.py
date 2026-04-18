@@ -39,9 +39,15 @@ def toolkit_filter_kwargs(cfg: ToolkitFilterFields) -> dict[str, list[str]]:
 class FeishuConfig(ToolkitFilterFields):
     """Feishu (Lark) channel settings."""
 
+    activate: bool = Field(default=True, description="Register Feishu channel")
     app_id: str = Field(default="", description="Feishu Open Platform app ID")
     app_secret: str = Field(default="", description="Feishu Open Platform app secret")
 
+
+class WxClawConfig(ToolkitFilterFields):
+    """WeChat Claw channel settings."""
+
+    activate: bool = Field(default=False, description="Register WeChat Claw channel")
 
 class LLMConfig(BaseModel):
     """LLM settings."""
@@ -104,7 +110,7 @@ class ChannelsConfig(BaseModel):
     """Channel integrations."""
 
     feishu: FeishuConfig = Field(default_factory=FeishuConfig)
-
+    wxclaw: WxClawConfig = Field(default_factory=WxClawConfig)
 
 class MCPServerConfig(BaseModel):
     """MCP server connection (stdio or HTTP)."""

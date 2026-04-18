@@ -19,7 +19,6 @@ from lark_oapi.api.im.v1 import (
 
 from openfox.tools.config import ConfigTools
 
-
 class FeiShuTools(Toolkit):
     """Async toolkit for sending Feishu messages and media."""
 
@@ -46,7 +45,14 @@ class FeiShuTools(Toolkit):
             (self.send_audio_message, "send_audio_message"),
             (self.send_media_message, "send_media_message"),
         ]
-        super().__init__(name="feishu", async_tools=async_tools, **kwargs)
+
+        super().__init__(
+            name="feishu",
+            async_tools=async_tools,
+            instructions=['Use FeiShuTools only when receive_id contains "ou_".'],
+            add_instructions=True,
+            **kwargs,
+        )
 
     @staticmethod
     def _source_is_http_url(source: str) -> bool:
@@ -281,10 +287,19 @@ class FeiShuTools(Toolkit):
         if isinstance(content, dict):
             payload = content
             real_type = "text"
-        else:
-            text = str(content or "")
+            return await self._acreate_message(
+                receive_id=receive_id,
+                receive_id_type=receive_id_type,
+                msg_type=real_type,
+                payload=payload,
+            )
+
+        def _format(text: str) -> str:
             if italics:
-                text = "\n".join(f"_{line}_" for line in text.split("\n"))
+                return "\n".join([f"_{line}_" for line in text.split("\n")])
+            return text
+
+        async def _send_text(text: str) -> Any:
             if use_markdown:
                 payload = {
                     "schema": "2.0",
@@ -294,12 +309,24 @@ class FeiShuTools(Toolkit):
             else:
                 payload = {"text": text}
                 real_type = "text"
-        return await self._acreate_message(
-            receive_id=receive_id,
-            receive_id_type=receive_id_type,
-            msg_type=real_type,
-            payload=payload,
-        )
+            return await self._acreate_message(
+                receive_id=receive_id,
+                receive_id_type=receive_id_type,
+                msg_type=real_type,
+                payload=payload,
+            )
+
+        message = str(content or "")
+        if len(message) <= 4096:
+            return await _send_text(_format(message))
+
+        message_batches = [message[i : i + 4000] for i in range(0, len(message), 4000)]
+        responses: List[Any] = []
+        total = len(message_batches)
+        for i, batch in enumerate(message_batches, 1):
+            batch_message = f"[{i}/{total}] {batch}"
+            responses.append(await _send_text(_format(batch_message)))
+        return responses
 
     async def send_image_message(
         self,

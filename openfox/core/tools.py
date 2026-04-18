@@ -24,6 +24,7 @@ from openfox.schemas.config import toolkit_filter_kwargs
 from openfox.tools.config import ConfigTools
 from openfox.tools.feishu import FeiShuTools
 from openfox.tools.mcp_config import MCPConfigTools
+from openfox.tools.wxclaw import WxClawTools
 from openfox.utils.mcps import build_mcps
 
 # Work around agno ScheduleManager: on interpreter exit, __del__ may run without `_pool` set.
@@ -40,6 +41,7 @@ def build_openfox_toolkits(
 
     
     tools_list.append(FeiShuTools(**toolkit_filter_kwargs(config.channels.feishu)))
+    tools_list.append(WxClawTools(**toolkit_filter_kwargs(config.channels.wxclaw)))
 
     if tc.scheduler.activate:
         tools_list.append(

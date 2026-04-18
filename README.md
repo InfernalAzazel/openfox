@@ -8,7 +8,7 @@
 
 <p align="center">
   <strong>Enterprise-grade self-hosted AI assistant</strong><br />
-  Feishu channel · Built-in Web console · LiteLLM multi-model
+  Feishu · WeChat iLink (WxClaw) · Built-in Web console · LiteLLM multi-model
 </p>
 
 <p align="center">
@@ -21,7 +21,7 @@
 
 ## What it is
 
-**OpenFox** runs on your own machine: it brings **LLM chat, scheduled jobs, Feishu bot, browser tools, MCP, and local skills** together in one HTTP service. It ships with an **embedded Web UI** at `/web`, and you can also talk to the assistant from Feishu.
+**OpenFox** runs on your own machine: it brings **LLM chat, scheduled jobs, Feishu bot, WeChat iLink (WxClaw) bot, browser tools, MCP, and local skills** together in one HTTP service. It ships with an **embedded Web UI** at `/web`, and you can chat from **Feishu** or **WeChat** when **WxClaw** is enabled.
 
 | Path | Description |
 |------|-------------|
@@ -45,7 +45,7 @@ OpenFox reads a single JSON file at **`~/.openfox/config.json`**. Fields map to 
 | `search_knowledge` | When `true`, enables **RAG** (Chroma under `~/.openfox/chromadb`; path is not configured here). |
 | `llm` | Chat model: `model_name`, `api_base`, `api_key` (LiteLLM-style id). |
 | `knowledge` | RAG details when `search_knowledge` is true: `vector_db` (collection, `search_type`, `embedder`, `reranker`, …), `max_results`, `isolate_vector_search`. |
-| `channels` | Integrations, e.g. `channels.feishu` (`app_id`, `app_secret`, `encrypt_key`, `verification_token`). |
+| `channels` | Integrations: `channels.feishu` (`activate`, `app_id`, `app_secret`, …) and `channels.wxclaw` (`activate`, optional `include_tools` / `exclude_tools` for **WxClawTools**). WxClaw uses QR login; tokens persist under `~/.openfox/channels/wxclaw/` (see `WxClawTools` / `OPENFOX_HOME_PATH`). |
 | `mcps` | List of MCP server entries (`command`/`args`/`env` or `url`/`headers`). |
 | `tools` | Per-toolkit switches and options (`mcp`, `scheduler`, `shell`, `websearch`, `arxiv`, …); each may include `activate`, `include_tools`, `exclude_tools`, and toolkit-specific fields. |
 
@@ -75,11 +75,15 @@ The **key order, nesting, and non-secret values** match a full on-disk layout; s
     "api_base": "https://api.deepseek.com",
     "api_key": "<llm_api_key>"
   },
-  // Channel integrations (example: Feishu)
+  // Channel integrations (Feishu + optional WeChat iLink)
   "channels": {
     "feishu": {
+      "activate": true,
       "app_id": "<feishu_app_id>",
       "app_secret": "<feishu_app_secret>"
+    },
+    "wxclaw": {
+      "activate": false
     }
   },
   // MCP servers: each entry is stdio (command+args) or HTTP (url+headers)
@@ -273,6 +277,7 @@ You can edit the live file in the Web **Config** page or via the **expand/config
 | **Evaluations** | Built-in **evaluation** workflow in the Web UI: measure **performance**, **reliability**, and **accuracy** of your agent or team against datasets and criteria. |
 | **Run tracing** | **Trace** each **agent run** end-to-end: inspect spans, sessions, and execution flow stored for observability (Web UI `/traces`). |
 | **Feishu** | Event and message intake; DM and group chat (mention the bot) |
+| **WxClaw (WeChat iLink)** | Long-poll **WeChat** messages; first-time **QR login** in the terminal; bot token and sync buffer under `~/.openfox/channels/wxclaw/`. Enable with `channels.wxclaw.activate`: `true`. |
 | **Scheduled jobs** | Built-in scheduler; enable with `tools.scheduler` (**SchedulerConfig**). Agent toolkit **SchedulerTools** creates recurring tasks (cron → POST Agent run endpoint) |
 | **Tools** | See “Built-in Agent tools” below; you can also attach **MCP** via `config.mcps`. JSON config editing in the Web console uses **ConfigTools** (not an Agent chat tool). |
 | **Skills** | `SKILL.md` under `SKILLS_PATH` (`~/.openfox/skills`, LocalSkills); upload skill packs from the Web UI |
@@ -287,6 +292,7 @@ You can edit the live file in the Web **Config** page or via the **expand/config
 | **ShellTools** | Run shell commands on the host where OpenFox runs (Agno) |
 | **SchedulerTools** | Registered when `tools.scheduler.activate` is true. Create / list / get / delete / disable jobs; cron expressions invoke this Agent's run endpoint |
 | **FeiShuTools** | Feishu outbound messaging toolkit: `send_text_message`, `send_image_message`, `send_file_message`, `send_audio_message`, `send_media_message` |
+| **WxClawTools** | WeChat iLink toolkit: `send_text`, `upload_file` (local file → CDN upload → send image/video/file). Use **only** for `@im.wechat` / `channel.type=wxclaw`; do not pass WeChat ids to Feishu tools. |
 | **MCPConfigTools** | Add / remove / update MCP-related config in chat to extend tools dynamically |
 | **WebSearchTools** | Search the web |
 | **ArxivTools** | Search [arXiv](https://arxiv.org/) papers and metadata |
@@ -309,7 +315,7 @@ You can edit the live file in the Web **Config** page or via the **expand/config
 pip install openfox
 ```
 
-**First run**: If `~/.openfox/config.json` is missing, an interactive setup runs (API docs toggle, auth, `os_security_key`, timezone, LLM, Feishu, etc.), then the server starts.
+**First run**: If `~/.openfox/config.json` is missing, an interactive setup runs (API docs toggle, auth, `os_security_key`, timezone, LLM, Feishu, etc.), then the server starts. Set `channels.wxclaw.activate` to `true` (and optionally `channels.feishu.activate` to `false` if you only use WeChat) to enable **WxClaw**; restart after editing config.
 
 ```bash
 python -m openfox
@@ -346,6 +352,19 @@ FeiShuTools methods (chat tools):
 - `send_file_message`: send by `file_key` or upload from URL/path.
 - `send_audio_message`: upload/send OPUS audio.
 - `send_media_message`: upload/send MP4 video, optional thumbnail.
+
+---
+
+## WxClaw (WeChat iLink)
+
+**WxClaw** is OpenFox’s **WeChat** channel: long-poll inbound messages and reply with text or uploaded image/video/file.
+
+### Prerequisites (WeChat on your phone)
+
+1. Open **WeChat** on the phone → **Me** → **Settings** → **Plugins**.
+2. Install **WeChat ClawBot** (微信 ClawBot).
+3. On the machine running OpenFox, set **`channels.wxclaw.activate`** to **`true`** in `~/.openfox/config.json`, then start **`python -m openfox`** (restart after config edits).
+4. When no bot token is saved yet, a **QR code** is printed in the **terminal** — scan it with **WeChat** to complete login. Tokens and the sync cursor are stored under **`~/.openfox/channels/wxclaw/`** (see `TOKEN_FILE` / `BUF_FILE` in `openfox/tools/wxclaw.py`).
 
 ---
 
@@ -425,7 +444,7 @@ ollama/llama3.1
 | Aspect | OpenClaw | OpenFox |
 |--------|----------|---------|
 | Stack | Node / TypeScript | Python, Agno, FastAPI |
-| Channels | Many IM platforms | Feishu-first (extensible) |
+| Channels | Many IM platforms | Feishu + optional **WeChat iLink (WxClaw)** |
 | Extensions | Browser, Canvas, Cron, etc. | Cron, Shell, browser (Playwright), MCP, local Skills |
 | Focus | Cross-platform personal assistant | Enterprise-grade self-hosted AI assistant, bilingual-friendly, with an integrated Web control plane |
 
